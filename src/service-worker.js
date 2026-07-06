@@ -28,6 +28,9 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  // '?v=' requests are freshness probes from the page (see the update check in
+  // index.html) — let them hit the network directly, never cache them.
+  if (event.request.url.includes('?v=')) return;
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const network = fetch(event.request).then((resp) => {

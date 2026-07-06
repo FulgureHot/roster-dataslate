@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0f0f0f">
-<script>document.documentElement.dataset.theme=(function(){try{return localStorage.getItem('40k_theme')||'light';}catch(e){return 'light';}})();</script>
+<script>(function(){let m='light';try{m=localStorage.getItem('40k_theme')||'light';}catch(e){}
+document.documentElement.dataset.theme=(m==='auto')?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):m;})();</script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="assets/icon.png">
 <title>40K Roster Analyzer — 11th Edition</title>
@@ -148,6 +149,10 @@ th{background:var(--bg3)}
 .toast.red{background:#c0392b;color:#fff}
 .army-score-grid{display:grid;grid-template-columns:1fr 1fr 150px;gap:16px;align-items:center}
 .live-armies-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:1rem}
+.hp-track{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-bottom:7px}
+.hp-fill{height:100%;border-radius:3px;transition:width .3s}
+.stepper-btn{padding:2px 10px;min-width:30px}
+.toast.clickable{pointer-events:auto;cursor:pointer}
 .army-radar-box{position:relative;width:150px;height:150px;margin:0 auto}
 [data-rule]{cursor:help}
 .rule-popover{position:absolute;max-width:240px;background:var(--popover-bg);border:1px solid var(--red);border-radius:6px;padding:8px 10px;font-size:11px;line-height:1.4;color:var(--text2);box-shadow:0 6px 20px rgba(0,0,0,.35);z-index:10000;pointer-events:none}
@@ -162,6 +167,8 @@ th{background:var(--bg3)}
   .tab{padding:10px 10px;font-size:11px}
   .toggle-row{padding:6px 0}
   .btn{padding:10px 16px}
+  /* Comfortable touch targets for in-game one-handed use */
+  .btn.stepper-btn{min-width:44px;min-height:42px;padding:8px 12px;font-size:16px}
 }
 </style>
 </head>
@@ -506,7 +513,13 @@ const LEADER_DB=[
   {match:["captain","chapter master"],abilities:[{name:"Rites of Battle",desc:"Re-roll hit rolls of 1 for ADEPTUS ASTARTES units within 6\".",effect:{rerollHit1_all:true}},{name:"Finest Hour",desc:"Once per battle: FIGHTS FIRST + DEVASTATING WOUNDS on melee until end of Fight phase.",effect:{}}]},
   {match:["librarian"],abilities:[{name:"Psychic Powers",desc:"Smite D3 mortal wounds on 4+. Psychic Hood: -1 to enemy psychic tests within 12\".",effect:{}}]},
   {match:["apothecary"],abilities:[{name:"Narthecium",desc:"Attached unit has FNP 5+. At end of Fight phase: attempt to revive one model on 4+.",effect:{fnp:5}}]},
-  {match:["techmarine"],abilities:[{name:"Blessing of the Omnissiah",desc:"Repair one friendly VEHICLE within 3\" each Movement phase: restore D3 wounds.",effect:{}}]}
+  {match:["techmarine"],abilities:[{name:"Blessing of the Omnissiah",desc:"Repair one friendly VEHICLE within 3\" each Movement phase: restore D3 wounds.",effect:{}}]},
+  // Ork leaders — these manual options existed in the dropdowns long before the
+  // matching DB entries did (getLeaderAbilities silently returned [] for them).
+  {match:["warboss"],abilities:[{name:"Might Is Right",desc:"+1 to Hit in melee for the attached unit.",effect:{hitBonus_melee:1}}]},
+  {match:["bigboss"],abilities:[{name:"Brutal Authority",desc:"Re-roll hit rolls of 1 for the attached unit's melee weapons.",effect:{rerollHit1_melee:true}}]},
+  {match:["painboy"],abilities:[{name:"Dok's Toolz",desc:"Attached unit has FNP 5+.",effect:{fnp:5}}]},
+  {match:["bannernob"],abilities:[{name:"Waaagh! Banner",desc:"Attached unit gains a 5+ Invulnerable save (defensive — not modelled in attack sims).",effect:{}}]}
 ];
 
 
@@ -598,19 +611,30 @@ function showTab(t){document.querySelectorAll('.tab').forEach(e=>e.classList.rem
 function loadSample(k){document.getElementById('roster-input').value=SAMPLES[k];}
 let R=null,chartSt=null,chartRadar=null,chartEff=null,chartSim=null,chartLiveSim=null;
 
-function applyTheme(theme){
-  document.documentElement.dataset.theme=theme;
-  try{localStorage.setItem('40k_theme',theme);}catch(e){}
+// Theme mode is 'light' | 'dark' | 'auto' (auto = follow the OS preference).
+// dataset.theme always holds the RESOLVED theme; the mode lives in localStorage.
+function themeMode(){try{return localStorage.getItem('40k_theme')||'light';}catch(e){return 'light';}}
+function resolveTheme(mode){return mode==='auto'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):mode;}
+const THEME_ICONS={light:'☀️',dark:'🌙',auto:'🌗'};
+function applyTheme(mode){
+  document.documentElement.dataset.theme=resolveTheme(mode);
+  try{localStorage.setItem('40k_theme',mode);}catch(e){}
   const btn=document.getElementById('theme-toggle');
-  if(btn)btn.textContent=theme==='light'?'🌙':'☀️';
+  if(btn){btn.textContent=THEME_ICONS[mode];btn.title='Theme: '+mode+' (tap to cycle light / dark / auto)';}
   // Already-rendered charts have their colors baked in at creation time — recreate
   // them from cache so they pick up the new theme's palette (see chartColors()).
   renderStatsCharts();
   renderSimChart();
+  renderLiveSimChart();
 }
 function toggleTheme(){
-  applyTheme(document.documentElement.dataset.theme==='light'?'dark':'light');
+  const next={light:'dark',dark:'auto',auto:'light'}[themeMode()]||'light';
+  applyTheme(next);
 }
+// In auto mode, follow live OS theme changes (e.g. phone switching at dusk)
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{
+  if(themeMode()==='auto')applyTheme('auto');
+});
 
 const SIZE_KW=/^(combat patrol|incursion|strike force|onslaught)/i;
 const SECTION_MAP={'BATTLELINE':'battleline','CHARACTERS':'character','DEDICATED TRANSPORTS':'transport','OTHER DATASHEETS':'other','Attached Units':'attached'};
@@ -792,14 +816,16 @@ function parseRoster(){
 }
 
 function resolveModifiers(unit,detachment,ctx){
-  const mod={extraA_melee:0,extraS_melee:0,lethalHits_all:false,lethalHits_melee:false,rerollHit1_melee:false,rerollHit1_all:false,rerollWound1_melee:false,rerollAllWounds_melee:false,fnp:null,notes:[]};
+  const mod={extraA_melee:0,extraS_melee:0,hitBonus_melee:0,lethalHits_all:false,lethalHits_melee:false,rerollHit1_melee:false,rerollHit1_all:false,rerollWound1_melee:false,rerollWound1_all:false,rerollAllWounds_melee:false,fnp:null,notes:[]};
   for(const ab of(unit.leaderAbilities||[])){
     if(ab.effect.lethalHits_all){mod.lethalHits_all=true;mod.notes.push(`${ab.name}: LETHAL HITS`);}
     if(ab.effect.rerollHit1_melee){mod.rerollHit1_melee=true;mod.notes.push(`${ab.name}: re-roll hit 1s melee`);}
     if(ab.effect.rerollHit1_all){mod.rerollHit1_all=true;mod.notes.push(`${ab.name}: re-roll hit 1s`);}
+    if(ab.effect.hitBonus_melee){mod.hitBonus_melee+=ab.effect.hitBonus_melee;mod.notes.push(`${ab.name}: +${ab.effect.hitBonus_melee} to Hit melee`);}
     if(ab.effect.fnp){mod.fnp=ab.effect.fnp;mod.notes.push(`${ab.name}: FNP ${ab.effect.fnp}+`);}
   }
-  if(detachment){const dm=detachment.calc(ctx);if(dm.extraA_melee)mod.extraA_melee+=dm.extraA_melee;if(dm.extraS_melee)mod.extraS_melee+=dm.extraS_melee;if(dm.rerollWound1_melee)mod.rerollWound1_melee=true;if(dm.rerollAllWounds_melee)mod.rerollAllWounds_melee=true;if(dm.rerollHit1_all)mod.rerollHit1_all=true;if(dm.lethalHits_melee)mod.lethalHits_melee=true;if(dm.note)mod.notes.push(`${detachment.rule}: ${dm.note}`);}
+  if(detachment&&typeof detachment.calc==='function'){const dm=detachment.calc(ctx);if(dm.extraA_melee)mod.extraA_melee+=dm.extraA_melee;if(dm.extraS_melee)mod.extraS_melee+=dm.extraS_melee;if(dm.rerollWound1_melee)mod.rerollWound1_melee=true;if(dm.rerollAllWounds_melee)mod.rerollAllWounds_melee=true;if(dm.rerollHit1_all)mod.rerollHit1_all=true;if(dm.lethalHits_melee)mod.lethalHits_melee=true;if(dm.note)mod.notes.push(`${detachment.rule}: ${dm.note}`);}
+  if(ctx.oathTarget){mod.rerollHit1_all=true;mod.rerollWound1_all=true;mod.notes.push('Oath of Moment: re-roll hit & wound rolls of 1');}
   return mod;
 }
 
@@ -1233,7 +1259,7 @@ function calcDmg(weapons,def,opts,mod={}){
   for(const w of weapons){
     if(!w||!w.s)continue;
     const kw=w.kw||[],qty=w.qty||1,isShooting=(w.t==='rng'||w.t==='cq'),isMelee=(w.t==='cc'||w.t==='cq');
-    const hitMod=(opts.inCover&&isShooting)?-1:0;
+    const hitMod=((opts.inCover&&isShooting)?-1:0)+(isMelee?(mod.hitBonus_melee||0):0);
     const hitTgt=Math.max(2,w.sk-hitMod);
     let hitC=(7-hitTgt)/6;
     if(kw.includes('SUSTAINED_HITS_1'))hitC+=(1/6)*(1/6);
@@ -1248,7 +1274,8 @@ function calcDmg(weapons,def,opts,mod={}){
     const wR=woundTgt(effS,def.T);
     let wC=(7-wR)/6;
     if(opts.twin||kw.includes('TWIN_LINKED'))wC=1-(1-wC)*(1-wC);
-    if(isMelee){if(mod.rerollAllWounds_melee)wC=1-(1-wC)*(1-wC);else if(mod.rerollWound1_melee)wC=wC+(1/6)*(1-wC);}
+    if(isMelee&&mod.rerollAllWounds_melee)wC=1-(1-wC)*(1-wC);
+    else if((isMelee&&mod.rerollWound1_melee)||mod.rerollWound1_all)wC=wC+(1/6)*(1-wC);
     const effAp=Math.min(0,w.ap+(opts.apReduction||0));
     let effSv=Math.min(6,Math.max(2,def.sv-effAp));
     if(def.inv)effSv=Math.min(effSv,def.inv);
@@ -1269,7 +1296,7 @@ function probKill(atk,def,rounds,opts,mod){
   const weapons=getAllWpn(atk).filter(w=>w&&w.s);let best=0;
   for(const w of weapons){
     const kw=w.kw||[],qty=w.qty||1,isShooting=(w.t==='rng'||w.t==='cq'),isMelee=(w.t==='cc'||w.t==='cq');
-    const hitMod=(opts.inCover&&isShooting)?-1:0;
+    const hitMod=((opts.inCover&&isShooting)?-1:0)+(isMelee?(mod.hitBonus_melee||0):0);
     let hitC=(7-Math.max(2,w.sk-hitMod))/6;
     if(kw.includes('SUSTAINED_HITS_1'))hitC+=(1/6)*(1/6);
     if(mod.rerollHit1_all||(mod.rerollHit1_melee&&isMelee))hitC+=hitC/6;
@@ -1279,7 +1306,8 @@ function probKill(atk,def,rounds,opts,mod){
     const wR=woundTgt(effS,def.profile.T);
     let wC=(7-wR)/6;
     if(opts.twin||kw.includes('TWIN_LINKED'))wC=1-(1-wC)*(1-wC);
-    if(isMelee){if(mod.rerollAllWounds_melee)wC=1-(1-wC)*(1-wC);else if(mod.rerollWound1_melee)wC=wC+(1/6)*(1-wC);}
+    if(isMelee&&mod.rerollAllWounds_melee)wC=1-(1-wC)*(1-wC);
+    else if((isMelee&&mod.rerollWound1_melee)||mod.rerollWound1_all)wC=wC+(1/6)*(1-wC);
     const effAp=Math.min(0,w.ap+(opts.apReduction||0));
     let effSv=Math.min(6,Math.max(2,def.profile.sv-effAp));
     if(def.profile.inv)effSv=Math.min(effSv,def.profile.inv);
@@ -1297,6 +1325,58 @@ function probKill(atk,def,rounds,opts,mod){
   return best;
 }
 
+// Full damage distribution over one phase: P(total damage = x), all weapons
+// combined by convolution. Same per-die probabilities as probKill, but instead
+// of tracking only the single best weapon it aggregates the whole loadout —
+// answers "what are my chances of doing at least X damage?" rather than just
+// the expected value.
+const DMG_DIST_CAP=60;
+function dmgDistribution(atk,defProfile,opts,mod){
+  let dist=[1]; // dist[x] = P(total damage so far = x)
+  const weapons=getAllWpn(atk).filter(w=>w&&w.s);
+  for(const w of weapons){
+    const kw=w.kw||[],qty=w.qty||1,isShooting=(w.t==='rng'||w.t==='cq'),isMelee=(w.t==='cc'||w.t==='cq');
+    const hitMod=((opts.inCover&&isShooting)?-1:0)+(isMelee?(mod.hitBonus_melee||0):0);
+    let hitC=(7-Math.max(2,w.sk-hitMod))/6;
+    if(kw.includes('SUSTAINED_HITS_1'))hitC+=(1/6)*(1/6);
+    if(mod.rerollHit1_all||(mod.rerollHit1_melee&&isMelee))hitC+=hitC/6;
+    const hasLethal=kw.includes('LETHAL_HITS')||mod.lethalHits_all||(mod.lethalHits_melee&&isMelee);
+    const autoWound=hasLethal?(1/6)*hitC:0;
+    let effS=w.s+(isMelee?(mod.extraS_melee||0):0);
+    let wC=(7-woundTgt(effS,defProfile.T))/6;
+    if(opts.twin||kw.includes('TWIN_LINKED'))wC=1-(1-wC)*(1-wC);
+    if(isMelee&&mod.rerollAllWounds_melee)wC=1-(1-wC)*(1-wC);
+    else if((isMelee&&mod.rerollWound1_melee)||mod.rerollWound1_all)wC=wC+(1/6)*(1-wC);
+    const effAp=Math.min(0,w.ap+(opts.apReduction||0));
+    let effSv=Math.min(6,Math.max(2,defProfile.sv-effAp));
+    if(defProfile.inv)effSv=Math.min(effSv,defProfile.inv);
+    const saveFail=Math.max(0,(effSv-1))/6;
+    let pWound=hitC*wC*saveFail+autoWound*saveFail;
+    const fnpV=opts.fnp||mod.fnp;if(fnpV)pWound*=(1-(7-fnpV)/6);
+    pWound=Math.min(1,Math.max(0,pWound));
+    let attacks=(typeof w.a==='number'?w.a:3.5)*qty;
+    if(isMelee&&mod.extraA_melee)attacks+=mod.extraA_melee*qty;
+    if(kw.includes('BLAST')||kw.includes('CLEAVE_1'))attacks+=Math.floor((opts.defMod||1)/5);
+    let dmg=w.d;if(kw.includes('MELTA_2')&&opts.melta)dmg+=2;
+    const n=Math.round(attacks);
+    if(n<=0||pWound<=0)continue;
+    // Weapon's own damage distribution, then convolve into the running total
+    const wDist=[];
+    for(let k=0;k<=n;k++){const x=Math.min(DMG_DIST_CAP,Math.round(k*dmg));wDist[x]=(wDist[x]||0)+binomP(n,k,pWound);}
+    const next=[];
+    for(let a=0;a<dist.length;a++){
+      if(!dist[a])continue;
+      for(let b=0;b<wDist.length;b++){
+        if(!wDist[b])continue;
+        const x=Math.min(DMG_DIST_CAP,a+b);
+        next[x]=(next[x]||0)+dist[a]*wDist[b];
+      }
+    }
+    dist=next;
+  }
+  return dist;
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // SHARED SIM RUNNER (used by all target types)
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1311,9 +1391,10 @@ function runSimWithDef(def, leaderAbilitiesOverride){
   const belowStart=document.getElementById('o-below-start').checked;
   const belowHalf=document.getElementById('o-below-half').checked;
   const entrenched=document.getElementById('o-entrenched').checked;
+  const oathTarget=document.getElementById('o-oath').checked;
   // KEY FIX: always read defMod from the DOM
   const defMod=parseInt(document.getElementById('c-mod').value)||getModels(def)||1;
-  const ctx={onCharge,belowHalf,belowStarting:belowStart,entrenched,waaagh:onCharge,
+  const ctx={onCharge,belowHalf,belowStarting:belowStart,entrenched,oathTarget,waaagh:onCharge,
     bigMob:defMod>=20,nearWalker:false,
     isDeathCompany:(atk.profile.tags||[]).includes('DEATH_COMPANY'),
     hasJumpPack:(atk.profile.tags||[]).includes('JUMP_PACK')};
@@ -1473,7 +1554,7 @@ function buildSim(){
   const h=`<div class="card"><h3>Combat Configuration</h3>
     <div class="f2">
       <div class="fg"><label>Attacker</label>${sA}</div>
-      <div class="fg"><label>Target</label><select id="sel-def">${buildTargetDropdown()}</select></div>
+      <div class="fg"><label>Target <button class="btn" style="padding:1px 8px;font-size:11px;margin-left:6px" onclick="simSwapDuel()" title="Swap attacker and target">&#8644; Swap</button></label><select id="sel-def">${buildTargetDropdown()}</select></div>
     </div>
     <div class="fg" style="margin-bottom:10px">
       <label>Leader attached to attacker <span style="color:var(--text3);font-weight:400">— overrides roster detection</span></label>
@@ -1494,6 +1575,7 @@ function buildSim(){
     <p style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Scenario / Detachment</p>
     <div style="margin-bottom:4px">
       <label class="toggle-row"><input type="checkbox" id="o-charge" checked> <strong>Attacker charged this turn</strong></label>
+      <label class="toggle-row"><input type="checkbox" id="o-oath"> <strong>Oath of Moment target</strong> (re-roll hit &amp; wound 1s)</label>
       <label class="toggle-row"><input type="checkbox" id="o-below-start"> <strong>Below Starting Strength</strong> (Lost Brethren)</label>
       <label class="toggle-row"><input type="checkbox" id="o-below-half"> <strong>Below Half Strength</strong> (Lost Brethren full re-rolls)</label>
       <label class="toggle-row"><input type="checkbox" id="o-entrenched"> <strong>Entrenched</strong> (Ceramite Sentinels)</label>
@@ -1538,6 +1620,17 @@ function buildSim(){
       leaderSel.value='none';
     }
   });
+}
+
+// Swap attacker <-> target. Only meaningful when the target is a unit from the
+// analysed roster (reference/custom targets have no weapons and can't attack).
+function simSwapDuel(){
+  const atkSel=document.getElementById('sel-atk'),defSel=document.getElementById('sel-def');
+  if(!defSel.value.startsWith('roster:')){showToast('Can only swap when the target is a unit from your roster','red');return;}
+  const defIdx=defSel.value.slice(7);
+  defSel.value='roster:'+atkSel.value;
+  atkSel.value=defIdx;
+  defSel.dispatchEvent(new Event('change'));
 }
 
 function runSim(){
@@ -1703,7 +1796,7 @@ function saveRosterToLibrary(){
       }))
     };
     const idx = _libCache.findIndex(e=>e.name===snap.name&&e.faction===snap.faction);
-    if(idx>=0) _libCache[idx]=snap; else _libCache.push(snap);
+    if(idx>=0){snap.id=_libCache[idx].id;snap.note=_libCache[idx].note;_libCache[idx]=snap;}else _libCache.push(snap);
     console.log('[Library] Saved:', snap.name, '| Total rosters:', _libCache.length);
     saveLibrary([..._libCache]).then(()=>{
       showToast(`Saved to library — ${snap.name}`, 'green');
@@ -1846,10 +1939,20 @@ function buildLibraryTab(){
           <div class="lbi-track"><div class="lbi-fill" style="width:${pct}%;background:${b.color}"></div></div>
         </div>`;
       }
+      const noteEsc=(e.note||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
       h+=`</div></div>
           <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-            <button onclick="loadRosterFromLibrary(${e.id})" title="Load this roster" style="padding:4px 10px;font-size:11px;border:1px solid rgba(192,57,43,.5);border-radius:6px;background:rgba(192,57,43,.1);cursor:pointer;color:#f87171;font-family:var(--font)">&#9654; Load</button>
+            <button onclick="loadRosterFromLibrary(${e.id})" title="Load this roster" style="padding:4px 10px;font-size:11px;border:1px solid rgba(192,57,43,.5);border-radius:6px;background:rgba(192,57,43,.1);cursor:pointer;color:var(--c-red-lt);font-family:var(--font)">&#9654; Load</button>
+            <button onclick="libToggleNoteEditor(${e.id})" title="Add/edit a note" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:2px 4px;font-family:var(--font)">&#9998; Note</button>
             <button onclick="deleteFromLibrary(${e.id})" title="Remove" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:2px 4px;font-family:var(--font)">&#10005; Remove</button>
+          </div>
+        </div>
+        ${e.note?`<div style="margin-top:8px;padding:6px 10px;border-left:2px solid var(--c-amber);background:var(--overlay-1);border-radius:4px;font-size:11px;color:var(--text2)">&#128221; ${noteEsc}</div>`:''}
+        <div id="lib-note-editor-${e.id}" style="display:none;margin-top:8px">
+          <textarea id="lib-note-input-${e.id}" style="height:60px;font-family:var(--font);font-size:12px" placeholder="Note for this list (matchup impressions, tuning ideas...)">${noteEsc}</textarea>
+          <div style="display:flex;gap:6px;margin-top:4px">
+            <button class="btn" style="font-size:11px;padding:4px 12px" onclick="libSaveNote(${e.id})">Save note</button>
+            <button class="btn" style="font-size:11px;padding:4px 12px" onclick="libToggleNoteEditor(${e.id})">Cancel</button>
           </div>
         </div>
       </div>`;
@@ -1892,6 +1995,18 @@ function setLibSort(key){
   buildLibraryTab();
 }
 
+function libToggleNoteEditor(id){
+  const ed=document.getElementById('lib-note-editor-'+id);
+  if(ed)ed.style.display=ed.style.display==='none'?'block':'none';
+}
+function libSaveNote(id){
+  const entry=_libCache.find(e=>e.id===id);
+  if(!entry)return;
+  entry.note=document.getElementById('lib-note-input-'+id).value.trim();
+  saveLibrary([..._libCache]).catch(e=>console.error('[Library] note save failed:',e));
+  buildLibraryTab();
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // LIVE ACTION — track a real game (models/wounds remaining on both sides) and
 // check duel odds against the CURRENT state instead of a full-health reference
@@ -1909,7 +2024,17 @@ function loadLiveFromStorage(){
   try{
     const raw=localStorage.getItem(LIVE_KEY);
     if(raw) LIVE=JSON.parse(raw);
+    if(LIVE){
+      // Detachment objects carry a calc() function that JSON.stringify drops —
+      // re-resolve them from DETACHMENT_DB or every post-restart duel crashes.
+      LIVE.myDetachment=rehydrateDetachment(LIVE.myDetachment);
+      LIVE.oppDetachment=rehydrateDetachment(LIVE.oppDetachment);
+    }
   }catch(e){ console.error('[Live] load failed:', e); }
+}
+function rehydrateDetachment(d){
+  if(!d||!d.name)return null;
+  return Object.values(DETACHMENT_DB).find(x=>x.name===d.name)||detectDetachment(d.name);
 }
 
 function cloneUnitsForLive(units){
@@ -1946,7 +2071,7 @@ function startLiveGame(){
   LIVE={
     myUnits:cloneUnitsForLive(myUnits), oppUnits:cloneUnitsForLive(oppUnits),
     myDetachment:myDetachment||null, oppDetachment,
-    round:1
+    round:1, myCP:1, oppCP:1
   };
   saveLive();
   buildLiveTab();
@@ -1982,6 +2107,10 @@ function liveAdjustRound(delta){
   LIVE.round=Math.max(1,LIVE.round+delta);
   saveLive();buildLiveTab();
 }
+function liveAdjustCP(side,delta){
+  LIVE[side]=Math.max(0,(LIVE[side]??1)+delta);
+  saveLive();buildLiveTab();
+}
 
 function buildLiveTab(){
   const el=document.getElementById('live-c');
@@ -2005,25 +2134,34 @@ function buildLiveTab(){
     const models=u._live.modelsLeft,maxModels=u._live.startModels;
     const curW=u._live.curWounds==null?u.profile.w:u._live.curWounds;
     const dead=models<=0;
+    // Total wounds remaining across the unit, for the health bar
+    const totalLeft=dead?0:(models-1)*u.profile.w+curW;
+    const totalMax=maxModels*u.profile.w;
+    const ratio=totalMax>0?totalLeft/totalMax:0;
+    const hpColor=ratio>0.6?'#16a34a':ratio>0.3?'#d97706':'#c0392b';
     return `<div class="uc"${dead?' style="opacity:.5"':''}>
       <div class="uh"><span class="un">${u.name}</span>${u.leadedBy?`<span class="badge bl">led by ${u.leadedBy.split(' ')[0]}</span>`:''}${dead?'<span class="badge bw">Destroyed</span>':''}</div>
+      <div class="hp-track"><div class="hp-fill" style="width:${Math.round(ratio*100)}%;background:${hpColor}"></div></div>
       <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--text3)">
         <div style="display:flex;align-items:center;gap:6px">Models
-          <button class="btn" style="padding:2px 8px" onclick="liveAdjustModels('${side}',${idx},-1)">&minus;</button>
+          <button class="btn stepper-btn" onclick="liveAdjustModels('${side}',${idx},-1)">&minus;</button>
           <strong style="color:var(--text);min-width:34px;text-align:center;display:inline-block">${models}/${maxModels}</strong>
-          <button class="btn" style="padding:2px 8px" onclick="liveAdjustModels('${side}',${idx},1)">+</button>
+          <button class="btn stepper-btn" onclick="liveAdjustModels('${side}',${idx},1)">+</button>
         </div>
         <div style="display:flex;align-items:center;gap:6px">Wounds
-          <button class="btn" style="padding:2px 8px" onclick="liveAdjustWounds('${side}',${idx},-1)">&minus;</button>
+          <button class="btn stepper-btn" onclick="liveAdjustWounds('${side}',${idx},-1)">&minus;</button>
           <strong style="color:var(--text);min-width:34px;text-align:center;display:inline-block">${curW}/${u.profile.w}</strong>
-          <button class="btn" style="padding:2px 8px" onclick="liveAdjustWounds('${side}',${idx},1)">+</button>
+          <button class="btn stepper-btn" onclick="liveAdjustWounds('${side}',${idx},1)">+</button>
         </div>
-        <button class="btn" style="padding:2px 8px;margin-left:auto" onclick="liveResetUnit('${side}',${idx})">&#8634; Reset</button>
+        <button class="btn stepper-btn" style="margin-left:auto" onclick="liveResetUnit('${side}',${idx})">&#8634; Reset</button>
       </div>
     </div>`;
   };
-  const myCol=LIVE.myUnits.map((u,i)=>renderUnit(u,'myUnits',i)).join('');
-  const oppCol=LIVE.oppUnits.map((u,i)=>renderUnit(u,'oppUnits',i)).join('');
+  // Destroyed units sink to the bottom of their column (display order only —
+  // original indices are kept so the stepper onclicks stay valid)
+  const columnOrder=units=>units.map((u,i)=>({u,i})).sort((a,b)=>(a.u._live.modelsLeft<=0?1:0)-(b.u._live.modelsLeft<=0?1:0));
+  const myCol=columnOrder(LIVE.myUnits).map(({u,i})=>renderUnit(u,'myUnits',i)).join('');
+  const oppCol=columnOrder(LIVE.oppUnits).map(({u,i})=>renderUnit(u,'oppUnits',i)).join('');
   // Quick-added reference units (see liveAddOppUnit) carry accurate defensive
   // stats but no weapon loadout — that only comes from parsed roster text — so
   // they're excluded from the attacker list (would always show 0 damage).
@@ -2033,9 +2171,21 @@ function buildLiveTab(){
     <div class="card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
       <div style="display:flex;align-items:center;gap:8px">
         <span style="font-size:12px;color:var(--text3)">Round</span>
-        <button class="btn" style="padding:4px 10px" onclick="liveAdjustRound(-1)">&minus;</button>
+        <button class="btn stepper-btn" onclick="liveAdjustRound(-1)">&minus;</button>
         <strong style="font-size:16px">${LIVE.round}</strong>
-        <button class="btn" style="padding:4px 10px" onclick="liveAdjustRound(1)">+</button>
+        <button class="btn stepper-btn" onclick="liveAdjustRound(1)">+</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;color:var(--text3)">My CP</span>
+        <button class="btn stepper-btn" onclick="liveAdjustCP('myCP',-1)">&minus;</button>
+        <strong style="font-size:16px">${LIVE.myCP??1}</strong>
+        <button class="btn stepper-btn" onclick="liveAdjustCP('myCP',1)">+</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;color:var(--text3)">Opp CP</span>
+        <button class="btn stepper-btn" onclick="liveAdjustCP('oppCP',-1)">&minus;</button>
+        <strong style="font-size:16px">${LIVE.oppCP??1}</strong>
+        <button class="btn stepper-btn" onclick="liveAdjustCP('oppCP',1)">+</button>
       </div>
       <button class="btn" onclick="endLiveGame()">End Game</button>
     </div>
@@ -2073,20 +2223,32 @@ function buildLiveTab(){
       <h3>Duel calculator</h3>
       <div class="f2">
         <div class="fg"><label>Attacker</label><select id="live-sel-atk">${dueOptions('myUnits',LIVE.myUnits,true)}${dueOptions('oppUnits',LIVE.oppUnits,true)}</select></div>
-        <div class="fg"><label>Target</label><select id="live-sel-def">${dueOptions('oppUnits',LIVE.oppUnits)}${dueOptions('myUnits',LIVE.myUnits)}</select></div>
+        <div class="fg"><label>Target <button class="btn" style="padding:1px 8px;font-size:11px;margin-left:6px" onclick="liveSwapDuel()" title="Swap attacker and target">&#8644; Swap</button></label><select id="live-sel-def">${dueOptions('oppUnits',LIVE.oppUnits)}${dueOptions('myUnits',LIVE.myUnits)}</select></div>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:10px">
         <label class="toggle-row"><input type="checkbox" id="live-o-charge" checked> On Charge</label>
+        <label class="toggle-row"><input type="checkbox" id="live-o-oath"> Oath of Moment target</label>
         <label class="toggle-row"><input type="checkbox" id="live-o-cov"> Cover</label>
         <label class="toggle-row"><input type="checkbox" id="live-o-fnp"> FNP 5+</label>
         <label class="toggle-row"><input type="checkbox" id="live-o-twin"> Twin-Linked</label>
         <label class="toggle-row"><input type="checkbox" id="live-o-melta"> Melta (half range)</label>
         <label class="toggle-row"><input type="checkbox" id="live-o-aoc"> Armor of Contempt (-1 AP taken)</label>
       </div>
-      <button class="btn primary" onclick="runLiveDuel()">Calculate</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn primary" onclick="runLiveDuel()">Calculate</button>
+        <button class="btn" onclick="runLiveTargetPriority()" title="Expected damage from the selected attacker against every enemy unit at once">&#127919; Target priority</button>
+      </div>
       <div id="live-duel-result" style="margin-top:12px"></div>
     </div>`;
   buildLiveAddUnitOptions();
+}
+
+function liveSwapDuel(){
+  const atkSel=document.getElementById('live-sel-atk'),defSel=document.getElementById('live-sel-def');
+  const a=atkSel.value,b=defSel.value;
+  // Attacker list is filtered to units with weapons — the current target may not qualify
+  if(![...atkSel.options].some(o=>o.value===b)){showToast('That target has no weapon data — it can\'t attack','red');return;}
+  atkSel.value=b;defSel.value=a;
 }
 
 // Populate the "add opponent unit" reference-unit dropdown for the selected
@@ -2134,15 +2296,49 @@ function liveDetachmentForSide(side){ return side==='myUnits'?LIVE.myDetachment:
 function runLiveDuel(){
   const{unit:atk,side:atkSide}=liveResolveSel(document.getElementById('live-sel-atk').value);
   const{unit:def}=liveResolveSel(document.getElementById('live-sel-def').value);
+  const r=liveComputeAttack(atk,atkSide,def);
+
+  const cols=['#c0392b','#e74c3c','#e67e22','#f1c40f','#2ecc71'];
+  let h=`<div class="sgrid" style="margin-bottom:10px">
+    <div class="sc"><div class="l">${atk.name} &#8594; ${def.name}</div><div class="v" style="color:var(--red)">${r.expDmg.toFixed(2)}<span style="font-size:11px;color:var(--text3)"> exp. dmg</span></div></div>
+    <div class="sc"><div class="l">Target current wounds</div><div class="v">${r.defProfile.w}</div><div class="s">of ${def.profile.w}W &middot; ${r.defMod} model${r.defMod>1?'s':''} left</div></div>
+  </div>`;
+  // Damage distribution: P(at least X damage) this phase — more actionable than
+  // the bare expected value when deciding whether a charge is worth it
+  const cum=[];let acc=0;
+  for(let x=r.dist.length-1;x>=1;x--){acc+=r.dist[x]||0;cum[x]=Math.min(1,acc);}
+  const totalWoundsLeft=(Math.max(1,def._live.modelsLeft)-1)*def.profile.w+r.defProfile.w;
+  const maxShow=Math.min(cum.length-1,Math.max(totalWoundsLeft,r.defProfile.w),15);
+  if(maxShow>=1){
+    h+=`<p style="font-size:12px;font-weight:600;margin:8px 0;color:var(--text2)">Chance of doing at least X damage</p>`;
+    for(let x=1;x<=maxShow;x++){
+      const pct=Math.round((cum[x]||0)*100);
+      const marks=[];
+      if(x===r.defProfile.w&&def._live.modelsLeft>0)marks.push('kills 1 model');
+      if(x===totalWoundsLeft)marks.push('wipes unit');
+      h+=`<div class="pbr"><span style="min-width:54px;color:var(--text3)">&#8805; ${x}</span><div class="pbb"><div class="pbf" style="width:${pct}%;background:${pct>60?'#16a34a':pct>30?'#d97706':'#c0392b'}"></div></div><span class="pv">${pct}%</span>${marks.length?`<span style="font-size:10px;color:var(--c-amber);white-space:nowrap">&#9668; ${marks.join(' + ')}</span>`:''}</div>`;
+    }
+  }
+  h+=`<p style="font-size:12px;font-weight:600;margin:10px 0 8px;color:var(--text2)">Kill probability after N rounds</p>
+  <div style="position:relative;height:110px;margin-bottom:8px"><canvas id="chartLiveSim"></canvas></div>`;
+  [1,2,3,4,5].forEach((n,i)=>{const pct=Math.round(r.probR[i]*100);h+=`<div class="pbr"><span style="min-width:54px;color:var(--text3)">Round ${n}</span><div class="pbb"><div class="pbf" style="width:${pct}%;background:${cols[i]}"></div></div><span class="pv" style="color:${cols[i]}">${pct}%</span></div>`;});
+  document.getElementById('live-duel-result').innerHTML=h;
+  _liveSimChartData={probR:r.probR};
+  renderLiveSimChart();
+}
+
+// Shared math for the Live duel and target-priority views: builds ctx/opts from
+// the duel toggles + the target's tracked state, and runs the combat engine.
+function liveComputeAttack(atk,atkSide,def){
   const onCharge=document.getElementById('live-o-charge').checked;
   const inCover=document.getElementById('live-o-cov').checked;
   const useFNP=document.getElementById('live-o-fnp').checked;
   const useTwin=document.getElementById('live-o-twin').checked;
   const useMelta=document.getElementById('live-o-melta').checked;
   const useAoC=document.getElementById('live-o-aoc').checked;
-
+  const oathTarget=document.getElementById('live-o-oath').checked;
   const defMod=Math.max(1,def._live.modelsLeft);
-  const ctx={onCharge,waaagh:onCharge,bigMob:defMod>=20,entrenched:false,
+  const ctx={onCharge,oathTarget,waaagh:onCharge,bigMob:defMod>=20,entrenched:false,
     belowStarting:def._live.modelsLeft<def._live.startModels,
     belowHalf:def._live.modelsLeft<=Math.floor(def._live.startModels/2),
     isDeathCompany:(atk.profile.tags||[]).includes('DEATH_COMPANY'),
@@ -2151,19 +2347,45 @@ function runLiveDuel(){
   const defProfile={...def.profile,w:def._live.curWounds==null?def.profile.w:def._live.curWounds};
   const opts={inCover,fnp:useFNP?5:null,twin:useTwin,melta:useMelta,defMod,apReduction:useAoC?1:0};
   const weapons=getAllWpn(atk).filter(w=>w&&w.s);
-  const expDmg=calcDmg(weapons,defProfile,opts,mod);
-  const probR=[1,2,3,4,5].map(n=>probKill(atk,{profile:defProfile},n,opts,mod));
+  return{
+    expDmg:calcDmg(weapons,defProfile,opts,mod),
+    probR:[1,2,3,4,5].map(n=>probKill(atk,{profile:defProfile},n,opts,mod)),
+    dist:dmgDistribution(atk,defProfile,opts,mod),
+    defProfile,defMod
+  };
+}
 
-  const cols=['#c0392b','#e74c3c','#e67e22','#f1c40f','#2ecc71'];
-  let h=`<div class="sgrid" style="margin-bottom:10px">
-    <div class="sc"><div class="l">${atk.name} &#8594; ${def.name}</div><div class="v" style="color:var(--red)">${expDmg.toFixed(2)}<span style="font-size:11px;color:var(--text3)"> exp. dmg</span></div></div>
-    <div class="sc"><div class="l">Target current wounds</div><div class="v">${defProfile.w}</div><div class="s">of ${def.profile.w}W &middot; ${defMod} model${defMod>1?'s':''} left</div></div>
-  </div>
-  <div style="position:relative;height:110px;margin-bottom:8px"><canvas id="chartLiveSim"></canvas></div>`;
-  [1,2,3,4,5].forEach((n,i)=>{const pct=Math.round(probR[i]*100);h+=`<div class="pbr"><span style="min-width:54px;color:var(--text3)">Round ${n}</span><div class="pbb"><div class="pbf" style="width:${pct}%;background:${cols[i]}"></div></div><span class="pv" style="color:${cols[i]}">${pct}%</span></div>`;});
+// One attacker vs EVERY living enemy unit at once, sorted by expected damage —
+// answers "what should I shoot/charge next turn?" in a single tap.
+function runLiveTargetPriority(){
+  const{unit:atk,side:atkSide}=liveResolveSel(document.getElementById('live-sel-atk').value);
+  const enemySide=atkSide==='myUnits'?'oppUnits':'myUnits';
+  const targets=LIVE[enemySide].map((u,i)=>({u,i})).filter(({u})=>u._live.modelsLeft>0);
+  if(!targets.length){document.getElementById('live-duel-result').innerHTML='<div class="empty" style="padding:1rem">No living enemy units to evaluate.</div>';return;}
+  const rows=targets.map(({u})=>{
+    const r=liveComputeAttack(atk,atkSide,u);
+    const totalLeft=(u._live.modelsLeft-1)*u.profile.w+r.defProfile.w;
+    // Both probabilities from the same all-weapons distribution, so a 1-model
+    // unit shows identical wipe/kill-1 values instead of two divergent methods
+    const pAtLeast=t=>{let p=0;for(let x=r.dist.length-1;x>=Math.min(t,DMG_DIST_CAP);x--)p+=r.dist[x]||0;return Math.min(1,p);};
+    return{name:u.name,models:u._live.modelsLeft,start:u._live.startModels,expDmg:r.expDmg,pKill1:pAtLeast(r.defProfile.w),pWipe:pAtLeast(totalLeft)};
+  }).sort((a,b)=>b.expDmg-a.expDmg);
+  const bestDmg=rows[0]?.expDmg||0;
+  let h=`<p style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text2)">&#127919; ${atk.name} vs all enemy units <span style="color:var(--text3);font-weight:400">(current state, same toggles as duel)</span></p>
+  <div style="overflow-x:auto"><table class="compare-table" style="margin-top:0">
+    <tr><th>Target</th><th>Models</th><th>Exp. dmg</th><th>Wipe unit %</th><th>Kill 1 model %</th></tr>`;
+  for(const row of rows){
+    h+=`<tr>
+      <td${row.expDmg===bestDmg?' class="best-val"':''}>${row.name}</td>
+      <td>${row.models}/${row.start}</td>
+      <td${row.expDmg===bestDmg?' class="best-val"':''}>${row.expDmg.toFixed(2)}</td>
+      <td>${Math.round(row.pWipe*100)}%</td>
+      <td>${Math.round(row.pKill1*100)}%</td>
+    </tr>`;
+  }
+  h+=`</table></div>`;
   document.getElementById('live-duel-result').innerHTML=h;
-  _liveSimChartData={probR};
-  renderLiveSimChart();
+  _liveSimChartData=null;
 }
 
 function renderLiveSimChart(){
@@ -2380,7 +2602,7 @@ function importLibrary(){
 
 document.addEventListener('DOMContentLoaded',()=>{
   const themeBtn=document.getElementById('theme-toggle');
-  if(themeBtn)themeBtn.textContent=document.documentElement.dataset.theme==='light'?'🌙':'☀️';
+  if(themeBtn){const m=themeMode();themeBtn.textContent=THEME_ICONS[m];themeBtn.title='Theme: '+m+' (tap to cycle light / dark / auto)';}
   buildDetachmentsTab();
   // Reload persisted library from storage on startup
   _ensureLoaded().then(()=>{
@@ -2396,7 +2618,43 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
     navigator.serviceWorker.register('service-worker.js')
       .then(reg=>console.log('[SW] registered:', reg.scope))
       .catch(e=>console.error('[SW] registration failed:', e));
+    // Cache-first serving means a fresh deploy only shows up on the SECOND
+    // launch. Probe the network in the background (the '?v=' buster bypasses
+    // the SW cache — see service-worker.js), refresh the cache if the app
+    // changed, and offer a one-tap reload. Offline: fetch fails, we stay quiet.
+    setTimeout(async()=>{
+      try{
+        const fresh=await fetch('index.html?v='+Date.now(),{cache:'no-store'});
+        if(!fresh.ok)return;
+        const cachedResp=await caches.match(new Request('index.html'));
+        if(!cachedResp)return;
+        const[freshText,cachedText]=await Promise.all([fresh.clone().text(),cachedResp.text()]);
+        if(freshText===cachedText)return;
+        const names=await caches.keys();
+        const cacheName=names.find(n=>n.startsWith('40k-analyzer'));
+        if(cacheName){
+          const cache=await caches.open(cacheName);
+          const body=()=>new Response(freshText,{headers:{'Content-Type':'text/html; charset=UTF-8'}});
+          await cache.put('index.html',body());
+          await cache.put('./',body());
+        }
+        console.log('[Update] new version cached — prompting reload');
+        showUpdateToast();
+      }catch(e){/* offline or transient network error — expected in-store, stay quiet */}
+    },3000);
   });
+}
+
+function showUpdateToast(){
+  let t=document.getElementById('update-toast');
+  if(t)return;
+  t=document.createElement('div');
+  t.id='update-toast';
+  t.className='toast green clickable';
+  t.textContent='⟳ New version available — tap to reload';
+  t.onclick=()=>location.reload();
+  document.body.appendChild(t);
+  requestAnimationFrame(()=>t.classList.add('show'));
 }
 </script>
 
