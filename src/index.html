@@ -1,0 +1,2051 @@
+<!DOCTYPE html>
+<html lang="en" data-lt-installed="true"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f0f0f">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="assets/icon.png">
+<title>40K Roster Analyzer — 11th Edition</title>
+<script src="vendor/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0f0f0f;--bg2:#1a1a1a;--bg3:#242424;--border:#2e2e2e;--text:#e8e8e6;--text2:#999;--text3:#555;--red:#c0392b;--red2:#922b21;--radius:8px;--font:'Segoe UI',system-ui,sans-serif;--mono:'Cascadia Code','Fira Code',monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;min-height:100vh}
+.app{max-width:940px;margin:0 auto;padding:1.5rem 1rem 4rem}
+h1{font-size:20px;font-weight:700;letter-spacing:-.03em;margin-bottom:4px}
+h1 span{color:var(--red)}
+.subtitle{font-size:12px;color:var(--text3);margin-bottom:1.5rem}
+.tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:1.5rem;flex-wrap:wrap}
+.tab{padding:9px 16px;font-size:12px;cursor:pointer;border:none;background:none;color:var(--text2);border-bottom:2px solid transparent;font-family:var(--font)}
+.tab.active{color:var(--text);border-bottom-color:var(--red);font-weight:600}
+.section{display:none}.section.active{display:block}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem}
+.card h3{font-size:11px;font-weight:700;margin-bottom:.75rem;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.btn{padding:8px 18px;border:1px solid var(--border);border-radius:var(--radius);background:none;cursor:pointer;font-size:12px;font-family:var(--font);color:var(--text2)}
+.btn:hover{background:var(--bg3);color:var(--text)}
+.btn.primary{background:var(--red);border-color:var(--red);color:#fff;font-weight:600}
+.btn.primary:hover{background:var(--red2)}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:1rem}
+textarea{width:100%;height:220px;font-family:var(--mono);font-size:11px;resize:vertical;border:1px solid var(--border);border-radius:var(--radius);padding:10px;background:var(--bg3);color:var(--text);line-height:1.6}
+textarea:focus{outline:none;border-color:var(--red)}
+select,input[type=number]{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg3);color:var(--text);font-size:12px;font-family:var(--font)}
+select:focus,input:focus{outline:none;border-color:var(--red)}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:1.2rem}
+.sc{background:var(--bg3);border-radius:var(--radius);padding:10px 12px}
+.sc .l{font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+.sc .v{font-size:22px;font-weight:700}.sc .s{font-size:10px;color:var(--text3);margin-top:3px}
+.uc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px}
+.uh{display:flex;align-items:center;gap:6px;margin-bottom:7px;flex-wrap:wrap}
+.un{font-size:13px;font-weight:600;flex:1;min-width:0}
+.badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600}
+.bl{background:rgba(124,58,237,.2);color:#a78bfa}.bb{background:rgba(22,163,74,.15);color:#4ade80}
+.bbl{background:rgba(217,119,6,.15);color:#fbbf24}.bch{background:rgba(37,99,235,.15);color:#60a5fa}
+.bw{background:rgba(192,57,43,.2);color:#f87171}.bp{background:var(--bg3);color:var(--text3)}
+.prow{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--text2);margin-bottom:6px}
+.kw-list{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:5px}
+.kw-tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:600;background:rgba(255,255,255,.04);color:var(--text3);border:1px solid var(--border)}
+.kw-tag.notable{background:rgba(124,58,237,.12);color:#a78bfa;border-color:rgba(124,58,237,.3)}
+.ab-list{margin-bottom:6px}
+.ab-item{font-size:11px;margin-bottom:3px;padding:3px 6px;border-radius:4px;background:rgba(255,255,255,.02);border-left:2px solid var(--border)}
+.ab-item .ab-name{font-weight:600;color:var(--text2)}.ab-item .ab-desc{color:var(--text3);font-size:10px}
+.wgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:5px;margin-top:6px}
+.wi{background:var(--bg3);border-radius:6px;padding:7px 9px}
+.wn{font-size:11px;font-weight:600;margin-bottom:4px}
+.ws{display:flex;gap:6px;flex-wrap:wrap}
+.wst{font-size:10px;color:var(--text3)}.wst span{color:var(--text2);font-weight:600}
+.kw-row{margin-top:4px;display:flex;flex-wrap:wrap;gap:2px}
+.kp{display:inline-block;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:600}
+.kdev{background:rgba(192,57,43,.2);color:#f87171}.klth{background:rgba(124,58,237,.2);color:#a78bfa}
+.ktwn{background:rgba(22,163,74,.15);color:#4ade80}.kbst{background:rgba(37,99,235,.15);color:#60a5fa}
+.kclv{background:rgba(219,39,119,.15);color:#f472b6}.khz{background:rgba(161,161,170,.1);color:#a1a1aa}
+.ksu{background:rgba(16,185,129,.15);color:#34d399}.kmlt{background:rgba(217,119,6,.15);color:#fbbf24}
+.ag{border:1px solid rgba(192,57,43,.4);border-radius:var(--radius);padding:12px;margin-bottom:1rem;background:rgba(192,57,43,.04)}
+.ag-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.ag-title{font-size:12px;font-weight:700;color:var(--red)}
+.leader-bonus{background:rgba(184,134,11,.12);border:1px solid rgba(184,134,11,.3);border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:11px}
+.leader-bonus .lbt{font-weight:700;color:#fde68a;margin-bottom:3px}
+.leader-bonus .lbd{color:var(--text2);line-height:1.5}
+.det-banner{border:1px solid rgba(192,57,43,.4);border-radius:var(--radius);padding:12px 14px;margin-bottom:1.2rem;background:rgba(192,57,43,.06)}
+.det-banner .det-name{font-size:14px;font-weight:700;color:var(--red);margin-bottom:2px}
+.det-banner .det-meta{font-size:11px;margin-bottom:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.det-banner .det-rule{font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px}
+.det-banner .det-desc{font-size:11px;color:var(--text2);line-height:1.6}
+.det-banner .det-calc{margin-top:8px;padding-top:8px;border-top:1px solid rgba(192,57,43,.2);font-size:11px;color:#fde68a}
+.disp-pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+.disp-th{background:rgba(37,99,235,.2);color:#60a5fa}
+.disp-pf{background:rgba(192,57,43,.2);color:#f87171}
+.disp-di{background:rgba(124,58,237,.2);color:#a78bfa}
+.disp-re{background:rgba(16,185,129,.2);color:#34d399}
+.disp-pa{background:rgba(217,119,6,.2);color:#fbbf24}
+.dp-pill{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;background:rgba(255,255,255,.08);color:var(--text2)}
+.sl{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin:1.2rem 0 8px}
+.divider{border:none;border-top:1px solid var(--border);margin:1.4rem 0}
+.err{color:#f87171;font-size:12px;margin-top:8px;padding:8px 12px;background:rgba(192,57,43,.1);border-radius:var(--radius);display:none;border-left:2px solid var(--red)}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.f3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px}
+.fg label{font-size:11px;color:var(--text3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+.toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:12px;cursor:pointer}
+.toggle-row input{width:14px;height:14px;cursor:pointer;accent-color:var(--red)}
+.pbr{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px}
+.pbb{flex:1;height:10px;background:var(--bg3);border-radius:5px;overflow:hidden}
+.pbf{height:100%;border-radius:5px;transition:width .4s}
+.pv{min-width:36px;text-align:right;font-weight:700;font-size:12px}
+.rb{background:var(--bg3);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px}
+.rb h4{font-size:11px;font-weight:700;margin-bottom:7px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+.rr{display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px solid var(--border)}
+.rr:last-child{border:none}.rl{color:var(--text3)}.rv{font-weight:600;color:var(--text2)}
+.info{border-radius:var(--radius);padding:7px 10px;margin-bottom:8px;font-size:11px;font-weight:500}
+.info.red{background:rgba(192,57,43,.15);color:#f87171}
+.info.amber{background:rgba(217,119,6,.12);color:#fbbf24}
+.info.green{background:rgba(22,163,74,.12);color:#4ade80}
+.info.gold{background:rgba(184,134,11,.12);color:#fde68a}
+.empty{text-align:center;padding:3rem;color:var(--text3);font-size:13px}
+.wpn-detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px;margin-top:10px}
+.wpn-detail-card{background:var(--bg3);border-radius:var(--radius);padding:8px 10px;border:1px solid transparent}
+.wpn-detail-card.best{border-color:var(--red)}
+.wpn-detail-name{font-size:11px;font-weight:600;margin-bottom:5px}
+.wpn-detail-dmg{font-size:18px;font-weight:700;color:var(--red)}
+.wpn-detail-sub{font-size:10px;color:var(--text3);margin-top:2px}
+.bonus-tag{font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(184,134,11,.2);color:#fde68a;font-weight:600;margin-left:4px}
+.det-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:1.5rem}
+.det-card{background:var(--bg3);border-radius:var(--radius);padding:10px 12px;border:1px solid var(--border)}
+.det-card.active-det{border-color:rgba(192,57,43,.6);background:rgba(192,57,43,.05)}
+.det-card-name{font-size:12px;font-weight:700;margin-bottom:4px}
+.det-card-rule{font-size:11px;color:var(--text2);margin-bottom:4px;font-style:italic}
+.det-card-desc{font-size:10px;color:var(--text3);line-height:1.5}
+.section-header{font-size:13px;font-weight:700;color:var(--text2);margin:1.2rem 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.lib-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.lib-card:hover{border-color:rgba(192,57,43,.5)}
+.lib-card-name{font-size:13px;font-weight:600;margin-bottom:4px}
+.lib-card-meta{font-size:11px;color:var(--text3);display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.lib-score{font-size:24px;font-weight:700;color:var(--red)}
+.lib-bars{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+.lib-bar-item{font-size:10px;color:var(--text3)}
+.lib-bar-item .lbi-label{display:flex;justify-content:space-between;margin-bottom:2px}
+.lib-bar-item .lbi-track{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.lib-bar-item .lbi-fill{height:100%;border-radius:3px}
+.sort-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;align-items:center}
+.sort-btn{padding:4px 10px;font-size:11px;border:1px solid var(--border);border-radius:20px;background:none;cursor:pointer;color:var(--text2);font-family:var(--font)}
+.sort-btn:hover,.sort-btn.active{background:var(--red);border-color:var(--red);color:#fff}
+.compare-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:1rem}
+.compare-table th{background:var(--bg3);padding:5px 8px;border:1px solid var(--border);text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3)}
+.compare-table td{padding:5px 8px;border:1px solid var(--border);color:var(--text2)}
+.compare-table tr:hover td{background:rgba(255,255,255,.02)}
+.best-val{color:#4ade80;font-weight:700}
+table{border-collapse:collapse;width:100%;font-size:10px}
+td,th{padding:6px 8px;border:1px solid var(--border)}
+th{background:var(--bg3)}
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 16px;border-radius:8px;font-size:12px;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.4);transition:opacity .25s,transform .25s;opacity:0;transform:translateY(8px);pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.green{background:#16a34a;color:#fff}
+.toast.red{background:#c0392b;color:#fff}
+.army-score-grid{display:grid;grid-template-columns:1fr 1fr 150px;gap:16px;align-items:center}
+.army-radar-box{position:relative;width:150px;height:150px;margin:0 auto}
+[data-rule]{cursor:help}
+.rule-popover{position:absolute;max-width:240px;background:#1a1a1a;border:1px solid var(--red);border-radius:6px;padding:8px 10px;font-size:11px;line-height:1.4;color:var(--text2);box-shadow:0 6px 20px rgba(0,0,0,.5);z-index:10000;pointer-events:none}
+
+/* ── Mobile (phones, e.g. Pixel 7 @ 412px CSS width) ─────────────────────── */
+@media (max-width:640px){
+  .f2,.f3{grid-template-columns:1fr}
+  .lib-bars{grid-template-columns:repeat(2,1fr)}
+  .army-score-grid{grid-template-columns:1fr}
+  .army-radar-box{width:100%;max-width:220px;height:180px}
+  .tab{padding:10px 10px;font-size:11px}
+  .toggle-row{padding:6px 0}
+  .btn{padding:10px 16px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<h1>40K Roster <span>Analyzer</span></h1>
+<p class="subtitle">11th Edition · All SM+Ork detachments · Leader bonuses · Unit abilities · Library &amp; comparison</p>
+<div class="tabs">
+  <button class="tab active" onclick="showTab('paste')">Paste Roster</button>
+  <button class="tab" onclick="showTab('units')">Units</button>
+  <button class="tab" onclick="showTab('stats')">Statistics</button>
+  <button class="tab" onclick="showTab('detachments')">Detachments</button>
+  <button class="tab" onclick="showTab('sim')">Combat Sim</button>
+  <button class="tab" onclick="showTab('library')">📚 Library</button>
+</div>
+<div id="s-paste" class="section active">
+  <div class="card">
+    <h3>Paste your roster</h3>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:10px">Warhammer App / BattleScribe export accepted as-is.</p>
+    <textarea id="roster-input" placeholder="Paste your roster here..."></textarea>
+    <div class="err" id="err-parse"></div>
+  </div>
+  <div class="card" style="margin-top:1rem">
+    <h3>Import from URL</h3>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:10px">Paste
+ a link to a Goonhammer/Tabletop Battles article, a New Recruit list, or
+ any page containing a 40K roster in Warhammer App format.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input type="text" id="url-input" placeholder="https://www.goonhammer.com/..." style="flex:1;min-width:200px">
+      <button class="btn primary" onclick="importFromURL()" style="white-space:nowrap">⇓ Fetch &amp; Import</button>
+    </div>
+    <div id="url-status" style="font-size:12px;margin-top:8px;display:none"></div>
+    <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn" style="font-size:11px" onclick="document.getElementById('url-input').value='https://www.goonhammer.com/40k-competitive-innovations-in-10th-plus-ultra-pt-2/'">Example: Goonhammer GT</button>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn primary" onclick="parseRoster()">Analyze →</button>
+    <button class="btn" onclick="loadSample('ba')">Blood Angels — Death Comp</button>
+    <button class="btn" onclick="loadSample('sm')">Space Marines — Drop Dread</button>
+  </div>
+</div>
+<div id="s-units" class="section"><div id="units-c"><div class="empty">Paste and analyze a roster first</div></div></div>
+<div id="s-stats" class="section"><div id="stats-c"><div class="empty">Paste and analyze a roster first</div></div></div>
+<div id="s-detachments" class="section"><div id="det-c"><p style="font-size:12px;color:var(--text3);margin-bottom:1rem">All Space Marines + Blood Angels + Orks detachments for 11th edition. Max 3 DP per 2000pts.</p><div class="section-header">Force Dispositions</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:1.5rem"><div style="background:var(--bg3);border-radius:var(--radius);padding:10px 12px"><div style="margin-bottom:4px"><span class="disp-pill disp-th">Take and Hold</span></div><div style="font-size:10px;color:var(--text3);line-height:1.4">Board control — claim and hold ground.</div></div><div style="background:var(--bg3);border-radius:var(--radius);padding:10px 12px"><div style="margin-bottom:4px"><span class="disp-pill disp-pf">Purge the Foe</span></div><div style="font-size:10px;color:var(--text3);line-height:1.4">Aggressive lethality — destroy enemy units.</div></div><div style="background:var(--bg3);border-radius:var(--radius);padding:10px 12px"><div style="margin-bottom:4px"><span class="disp-pill disp-di">Disruption</span></div><div style="font-size:10px;color:var(--text3);line-height:1.4">Sabotage enemy plans; actions in enemy territory.</div></div><div style="background:var(--bg3);border-radius:var(--radius);padding:10px 12px"><div style="margin-bottom:4px"><span class="disp-pill disp-re">Reconnaissance</span></div><div style="font-size:10px;color:var(--text3);line-height:1.4">Espionage and deep-table actions.</div></div><div style="background:var(--bg3);border-radius:var(--radius);padding:10px 12px"><div style="margin-bottom:4px"><span class="disp-pill disp-pa">Priority Assets</span></div><div style="font-size:10px;color:var(--text3);line-height:1.4">Obtain and recover key battlefield elements.</div></div></div><div class="section-header">3 Detachment Points</div><div class="det-grid"><div class="det-card"><div class="det-card-name"> Gladius Task Force</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">3 DP</span><span class="disp-pill disp-th">Take and Hold</span></div><div class="det-card-rule">Combat Doctrines</div><div class="det-card-desc">Once
+ per battle per doctrine — Devastator: shoot after Advancing; Tactical: 
+shoot and charge after Falling Back; Assault: charge after Advancing. 
+Suits all-comers lists. Armour of Contempt available.</div></div><div class="det-card"><div class="det-card-name"> Armoured Speartip</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">3 DP</span><span class="disp-pill disp-pf">Purge the Foe</span></div><div class="det-card-rule">Rapid Deployment</div><div class="det-card-desc">Units
+ disembarking from a moved Transport make a free D6" Normal move (D3+3" 
+from Heavy Transports with 14+ wounds). Land Raiders keep Assault Ramp.</div></div><div class="det-card"><div class="det-card-name"> Ceramite Sentinels</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">3 DP</span><span class="disp-pill disp-th">Take and Hold</span></div><div class="det-card-rule">Adaptive Defence</div><div class="det-card-desc">Units in terrain gain Stealth. Entrenched (unmoved, in terrain): re-roll hit and wound rolls of 1 when shooting.</div></div><div class="det-card"><div class="det-card-name"> Stormlance Task Force</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">3 DP</span><span class="disp-pill disp-di">Disruption</span></div><div class="det-card-rule">Lightning Assault</div><div class="det-card-desc">Units can Advance and Charge, and Fall Back and Charge. Ideal for Mounted, Bikers, and Jump Pack units.</div></div><div class="det-card"><div class="det-card-name"> Liberator Assault Group</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">3 DP</span><span class="disp-pill disp-pf">Purge the Foe</span></div><div class="det-card-rule">Red Thirst</div><div class="det-card-desc">Each
+ time an Adeptus Astartes unit fights after a Charge move, melee weapons
+ gain +1 Attack and +2 Strength until end of Fight phase.</div></div><div class="det-card"><div class="det-card-name"> War Horde</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">3 DP</span><span class="disp-pill disp-pf">Purge the Foe</span></div><div class="det-card-rule">Waaagh!</div><div class="det-card-desc">Once per battle: Waaagh! — all ORKS Advance+Charge, melee +1S +1A, 5+ Invulnerable save until next Command phase.</div></div></div><div class="section-header">2 Detachment Points</div><div class="det-grid"><div class="det-card"><div class="det-card-name"> 1st Company Task Force</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">2 DP</span><span class="disp-pill disp-th">Take and Hold</span></div><div class="det-card-rule">Extremis-Level Threat</div><div class="det-card-desc">Once
+ per battle, a Veteran unit can re-roll Wound rolls vs its Oath of 
+Moment target. Veterans holding objectives retain control when they 
+vacate (Duty and Honour stratagem).</div></div><div class="det-card"><div class="det-card-name"> Anvil Siege Force</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">2 DP</span><span class="disp-pill disp-th">Take and Hold</span></div><div class="det-card-rule">Armoured Wrath</div><div class="det-card-desc">All weapons gain HEAVY. Weapons already with HEAVY get +1 to Wound rolls. Suits fire-support armies.</div></div><div class="det-card"><div class="det-card-name"> Bastion Task Force</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">2 DP</span><span class="disp-pill disp-th">Take and Hold</span></div><div class="det-card-rule">Steadfast Defenders</div><div class="det-card-desc">+1 to Wound rolls while defending a controlled objective marker. Suits garrison armies.</div></div><div class="det-card"><div class="det-card-name"> Firestorm Assault Force</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">2 DP</span><span class="disp-pill disp-pf">Purge the Foe</span></div><div class="det-card-rule">Close-Range Devastation</div><div class="det-card-desc">All ranged weapons gain ASSAULT (Advance and shoot). Ranged weapons targeting units within 12" gain +1 Strength.</div></div><div class="det-card"><div class="det-card-name"> Headhunter Task Force</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">2 DP</span><span class="disp-pill disp-re">Reconnaissance</span></div><div class="det-card-rule">Surgical Strike</div><div class="det-card-desc">Units can target Characters in Attached units with any weapon. Attacks gain PRECISION on Hit roll of 5+.</div></div><div class="det-card"><div class="det-card-name"> Ironstorm Spearhead</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">2 DP</span><span class="disp-pill disp-pf">Purge the Foe</span></div><div class="det-card-rule">Armoured Wrath</div><div class="det-card-desc">Once per phase, one unit can re-roll a single Hit, Wound, or Damage roll (ranged or melee). Strong on heavy weapons.</div></div><div class="det-card"><div class="det-card-name"> Orbital Assault Force</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">2 DP</span><span class="disp-pill disp-di">Disruption</span></div><div class="det-card-rule">Strike from Orbit</div><div class="det-card-desc">Units
+ with Deep Strike can arrive in Turn 1. Units with Jump Packs or 
+arriving via Deep Strike make a free Advance move the turn they land.</div></div><div class="det-card"><div class="det-card-name"> Vanguard Spearhead</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">2 DP</span><span class="disp-pill disp-re">Reconnaissance</span></div><div class="det-card-rule">Shadow Masters</div><div class="det-card-desc">PHOBOS and REIVER units gain Cover. Units with Concealed remain Hidden after shooting.</div></div><div class="det-card"><div class="det-card-name"> The Lost Brethren</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">2 DP</span><span class="disp-pill disp-pf">Purge the Foe</span></div><div class="det-card-rule">A Noble Death in Combat</div><div class="det-card-desc">DEATH
+ COMPANY melee attacks: re-roll Wound rolls of 1 if below Starting 
+Strength; re-roll all failed Wound rolls if below Half-Strength. Death 
+Company Marines gain BATTLELINE.</div></div><div class="det-card"><div class="det-card-name"> The Angelic Host</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">2 DP</span><span class="disp-pill disp-di">Disruption</span></div><div class="det-card-rule">Upon Wings of Fire</div><div class="det-card-desc">JUMP PACK units can make a free move at end of any phase (once per unit per battle).</div></div><div class="det-card"><div class="det-card-name"> Rage-Cursed Onslaught</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">2 DP</span><span class="disp-pill disp-pf">Purge the Foe</span></div><div class="det-card-rule">Blood-Cursed Fury</div><div class="det-card-desc">All Adeptus Astartes units re-roll Wound rolls of 1 in melee always. On a Charge, also gain +1 Attack in melee.</div></div><div class="det-card"><div class="det-card-name"> Green Tide</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">2 DP</span><span class="disp-pill disp-pf">Purge the Foe</span></div><div class="det-card-rule">Tide of Bodies</div><div class="det-card-desc">BOYZ units of 20+ models gain LETHAL HITS on melee. Extended sticky objectives.</div></div><div class="det-card"><div class="det-card-name"> Bully Boyz</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">2 DP</span><span class="disp-pill disp-pf">Purge the Foe</span></div><div class="det-card-rule">Only da Strongest</div><div class="det-card-desc">NOBZ/MEGANOBZ/WARBOSS re-roll Wound rolls of 1 in melee. Second Waaagh! available for these units once per battle.</div></div><div class="det-card"><div class="det-card-name"> Kult of Speed</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">2 DP</span><span class="disp-pill disp-di">Disruption</span></div><div class="det-card-rule">Fast and Loud</div><div class="det-card-desc">SPEED FREEKS Advance+Charge always. On charge: +1 to Wound rolls.</div></div><div class="det-card"><div class="det-card-name"> Dread Mob</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">2 DP</span><span class="disp-pill disp-pf">Purge the Foe</span></div><div class="det-card-rule">Big Gunz and Walkers</div><div class="det-card-desc">ORK WALKER units re-roll one Hit or Wound roll per phase. Infantry within 6" of WALKER gain LETHAL HITS on ranged.</div></div><div class="det-card"><div class="det-card-name"> Da Big Hunt</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">2 DP</span><span class="disp-pill disp-re">Reconnaissance</span></div><div class="det-card-rule">Hunt the Monsters</div><div class="det-card-desc">BEAST SNAGGA units +1 Wound vs MONSTER and VEHICLE. Squighog Boyz gain DEVASTATING WOUNDS on charge.</div></div><div class="det-card"><div class="det-card-name"> Freebooter Krew</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">2 DP</span><span class="disp-pill disp-re">Reconnaissance</span></div><div class="det-card-rule">Hired Guns</div><div class="det-card-desc">Re-roll one Hit roll per phase per unit. FLASH GITZ and LOOTAS permanently gain SUSTAINED HITS 1.</div></div><div class="det-card"><div class="det-card-name"> Blitz Brigade</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">2 DP</span><span class="disp-pill disp-di">Disruption</span></div><div class="det-card-rule">Fasta Than Yooz</div><div class="det-card-desc">ORK INFANTRY CHARACTER units + attached bodyguard can disembark from moved Transport and charge. Transports Advance 6" flat.</div></div><div class="det-card"><div class="det-card-name"> Speedwaaagh!</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">2 DP</span><span class="disp-pill disp-di">Disruption</span></div><div class="det-card-rule">Vroom Vroom</div><div class="det-card-desc">SPEED FREEKS and WARBIKERS Advance+Charge always. During Waaagh!: +1 to Wound rolls.</div></div></div><div class="section-header">1 Detachment Point</div><div class="det-grid"><div class="det-card"><div class="det-card-name"> Fulguris Task Force</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">1 DP</span><span class="disp-pill disp-di">Disruption</span></div><div class="det-card-rule">Skystrike</div><div class="det-card-desc">SPEEDER
+ units (Land Speeder, Storm Speeder 
+Hailstrike/Hammerstrike/Thunderstrike) make a free Ingress move in the 
+first Movement phase. Reactive Evasion: move Speeder D3+3" in opponent's
+ Movement phase (1 CP).</div></div><div class="det-card"><div class="det-card-name"> Librarius Conclave</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">1 DP</span><span class="disp-pill disp-re">Reconnaissance</span></div><div class="det-card-rule">Psychic Disciplines</div><div class="det-card-desc">Each
+ battle round select a Psychic Discipline — all PSYKER units and their 
+attached unit gain it until end of round: Biomancy +2" M; Divination 
+re-roll hit/wound 1s; Pyromancy +1 AP within 12"; Telekinesis -1 Str on 
+attacks vs this unit; Telepathy ignore BS/WS/hit modifiers.</div></div><div class="det-card"><div class="det-card-name"> Subversion Assets</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">1 DP</span><span class="disp-pill disp-re">Reconnaissance</span></div><div class="det-card-rule">Nowhere to Hide</div><div class="det-card-desc">PHOBOS
+ and SCOUT SQUAD units gain Transhuman Perception: select visible enemy 
+within 12" in Shooting phase — it becomes Detected (+3" detection range 
+army-wide). Strike from Shadows: PHOBOS/Scout stays Hidden after 
+shooting for 1 CP.</div></div><div class="det-card"><div class="det-card-name"> Legacy of Grace</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">1 DP</span><span class="disp-pill disp-th">Take and Hold</span></div><div class="det-card-rule">Grace of Sanguinius</div><div class="det-card-desc">BLOOD ANGELS CHARACTER units (except Dante) get +1 to Advance and Charge rolls.</div></div><div class="det-card"><div class="det-card-name"> More Dakka!</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">1 DP</span><span class="disp-pill disp-pf">Purge the Foe</span></div><div class="det-card-rule">Dakka Dakka Dakka</div><div class="det-card-desc">Once per phase: one unit fires one ranged weapon again (D6 shots). During Waaagh!: all ranged gain SUSTAINED HITS 1.</div></div><div class="det-card"><div class="det-card-name"> Rollin' Deff</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">1 DP</span><span class="disp-pill disp-pf">Purge the Foe</span></div><div class="det-card-rule">Thundering Wagons</div><div class="det-card-desc">BATTLEWAGON/HUNTA RIG/KILL RIG: auto-advance 6", re-roll charge rolls.</div></div><div class="det-card"><div class="det-card-name"> Taktikal Brigade</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">1 DP</span><span class="disp-pill disp-re">Reconnaissance</span></div><div class="det-card-rule">Kunnin' Plan</div><div class="det-card-desc">One ORKS unit performs a free action each round. KOMMANDOS and STORMBOYZ can Fall Back+Charge.</div></div></div><div class="section-header">Mission Matrix</div><div style="overflow-x:auto"><table><tbody><tr><th>You \ Opp</th><th><span class="disp-pill disp-th">TH</span></th><th><span class="disp-pill disp-pf">PF</span></th><th><span class="disp-pill disp-di">DI</span></th><th><span class="disp-pill disp-re">RE</span></th><th><span class="disp-pill disp-pa">PA</span></th></tr><tr><td><span class="disp-pill disp-th">Take and Hold</span></td><td style="color:var(--text2)">Battlefield Dominance</td><td style="color:var(--text2)">Immovable Object</td><td style="color:var(--text2)">Determined Acquisition</td><td style="color:var(--text2)">Purge and Secure</td><td style="color:var(--text2)">Inescapable Dominion</td></tr><tr><td><span class="disp-pill disp-pf">Purge the Foe</span></td><td style="color:var(--text2)">Unstoppable Force</td><td style="color:var(--text2)">Meatgrinder</td><td style="color:var(--text2)">Punishment</td><td style="color:var(--text2)">Consecrate</td><td style="color:var(--text2)">Destroyer's Wrath</td></tr><tr><td><span class="disp-pill disp-di">Disruption</span></td><td style="color:var(--text2)">Death Trap</td><td style="color:var(--text2)">Delaying Action</td><td style="color:var(--text2)">Outmanoeuvre</td><td style="color:var(--text2)">Smoke and Mirrors</td><td style="color:var(--text2)">Locate and Deny</td></tr><tr><td><span class="disp-pill disp-re">Reconnaissance</span></td><td style="color:var(--text2)">Reconnaissance Sweep</td><td style="color:var(--text2)">Triangulation</td><td style="color:var(--text2)">Surveil the Foe</td><td style="color:var(--text2)">Gather Intel</td><td style="color:var(--text2)">Search and Scour</td></tr><tr><td><span class="disp-pill disp-pa">Priority Assets</span></td><td style="color:var(--text2)">Secure Asset</td><td style="color:var(--text2)">Vital Link</td><td style="color:var(--text2)">Extract Relic</td><td style="color:var(--text2)">Vanguard Operation</td><td style="color:var(--text2)">Sabotage</td></tr></tbody></table></div></div></div>
+<div id="s-sim" class="section"><div id="sim-c">  <div class="empty">Paste and analyze a roster first</div></div></div>
+<div id="s-library" class="section"><div id="lib-c">  <div class="empty">No saved rosters yet — analyze a roster to add it to the library</div></div></div>
+</div>
+<script>
+const SAMPLES={
+ba:`1000 death comp (990 points)
+Space Marines
+Blood Angels
+Incursion (1000 points)
+The Lost Brethren (2 Detachment Points)
+Force Dispositions: Purge the Foe
+Attached Units
+Attached Unit 1
+Chaplain with Jump Pack (80 points)
+• Attached as: Leader (Character)
+  • Warlord
+  • 1x Bolt pistol
+    1x Crozius arcanum
+Death Company Marines with Jump Packs (120 points)
+• Attached as: Bodyguard
+  • 5x Death Company Marine with Jump Packs
+    • 3x Astartes chainsword
+      1x Eviscerator
+      3x Heavy bolt pistol
+      1x Inferno pistol
+      1x Plasma pistol
+      1x Power fist
+Attached Unit 2
+Chaplain with Jump Pack (80 points)
+• Attached as: Leader (Character)
+  • 1x Bolt pistol
+    1x Crozius arcanum
+Assault Intercessors with Jump Packs (95 points)
+• Attached as: Bodyguard
+  • 1x Assault Intercessor Sergeant with Jump Pack
+    • 1x Heavy bolt pistol
+      1x Power fist
+  • 4x Assault Intercessors with Jump Packs
+    • 4x Astartes chainsword
+      4x Heavy bolt pistol
+BATTLELINE
+Death Company Marines (85 points)
+  • 5x Death Company Marine
+    • 3x Astartes chainsword
+      1x Eviscerator
+      4x Heavy bolt pistol
+      1x Inferno pistol
+      1x Thunder hammer
+OTHER DATASHEETS
+Death Company Dreadnought (150 points)
+  • 1x Blood fist bolt rifles
+    1x Blood fists
+    1x Twin Icarus ironhail heavy stubber
+    1x Twin heavy bolter
+Eradicator Squad (90 points)
+  • 1x Eradicator Sergeant
+    • 1x Bolt pistol
+      1x Close combat weapon
+      1x Melta rifle
+  • 2x Eradicator
+    • 2x Bolt pistol
+      2x Close combat weapon
+      2x Melta rifle
+Vanguard Veteran Squad with Jump Packs (105 points)
+  • 1x Vanguard Veteran Sergeant with Jump Pack
+    • 1x Bolt pistol
+      1x Vanguard Veteran weapon
+  • 4x Vanguard Veteran with Jump Pack
+    • 2x Grav-pistol
+      2x Storm Shield
+      4x Vanguard Veteran weapon
+Vindicator (185 points)
+  • 1x Armoured tracks
+    1x Demolisher cannon`,
+sm:`1000 dropDread (1000 points)
+Space Marines
+Blood Angels
+Incursion (1000 points)
+Liberator Assault Group (3 Detachment Points)
+Force Dispositions: Take and Hold
+Attached Units
+Attached Unit 1
+Lieutenant (45 points)
+• Attached as: Support (Character)
+  • 1x Bolt Pistol
+    1x Close combat weapon
+    1x Master-crafted bolter
+Sternguard Veteran Squad (100 points)
+• Attached as: Bodyguard
+  • 1x Sternguard Veteran Sergeant
+    • 1x Close combat weapon
+      1x Sternguard bolt pistol
+      1x Sternguard bolt rifle
+  • 4x Sternguard Veteran
+    • 4x Close combat weapon
+      4x Sternguard bolt pistol
+      4x Sternguard bolt rifle
+CHARACTERS
+Chaplain in Terminator Armour (110 points)
+  • Warlord
+  • 1x Crozius arcanum
+    1x Relic Shield
+  • Enhancement: Rage-fuelled Warrior
+DEDICATED TRANSPORTS
+Impulsor (80 points)
+  • 1x Armoured hull
+    1x Ironhail heavy stubber
+    1x Shield Dome
+    2x Storm bolter
+OTHER DATASHEETS
+Brutalis Dreadnought (150 points)
+  • 1x Brutalis talons
+    1x Twin Icarus ironhail heavy stubber
+    1x Twin multi-melta
+Eradicator Squad with Heavy Bolters (70 points)
+  • 1x Eradicator Sergeant
+    • 1x Bolt pistol
+      1x Close-combat weapon
+      1x Heavy Bolter
+  • 2x Eradicator
+    • 2x Bolt pistol
+      2x Close-combat weapon
+      2x Heavy Bolter
+Stormraven Gunship (280 points)
+  • 1x Armoured hull
+    2x Hurricane bolter
+    2x Stormstrike missile launcher
+    1x Twin assault cannon
+    1x Twin multi-melta
+Terminator Assault Squad (165 points)
+  • 1x Assault Terminator Sergeant
+    • 1x Storm Shield
+      1x Thunder hammer
+  • 4x Assault Terminator
+    • 1x Storm Shield
+      1x Thunder hammer
+      3x Twin lightning claws`
+};
+
+const DISPOSITIONS={TH:{id:'TH',label:'Take and Hold',cls:'disp-th',desc:'Board control — claim and hold ground.'},PF:{id:'PF',label:'Purge the Foe',cls:'disp-pf',desc:'Aggressive lethality — destroy enemy units.'},DI:{id:'DI',label:'Disruption',cls:'disp-di',desc:'Sabotage enemy plans; actions in enemy territory.'},RE:{id:'RE',label:'Reconnaissance',cls:'disp-re',desc:'Espionage and deep-table actions.'},PA:{id:'PA',label:'Priority Assets',cls:'disp-pa',desc:'Obtain and recover key battlefield elements.'}};
+
+const DETACHMENT_DB={
+  "gladius task force":{name:"Gladius Task Force",dp:3,disp:'TH',rule:"Combat Doctrines",desc:"Once per battle per doctrine — Devastator: shoot after Advancing; Tactical: shoot and charge after Falling Back; Assault: charge after Advancing. Suits all-comers lists. Armour of Contempt available.",calc:(ctx)=>({note:"Doctrine-dependent; Assault allows Advance+Charge. No flat damage mod."})},
+  "armoured speartip":{name:"Armoured Speartip",dp:3,disp:'PF',rule:"Rapid Deployment",desc:"Units disembarking from a moved Transport make a free D6\" Normal move (D3+3\" from Heavy Transports with 14+ wounds). Land Raiders keep Assault Ramp.",calc:(ctx)=>({note:"Mobility on disembark — no flat damage mod"})},
+  "ceramite sentinels":{name:"Ceramite Sentinels",dp:3,disp:'TH',rule:"Adaptive Defence",desc:"Units in terrain gain Stealth. Entrenched (unmoved, in terrain): re-roll hit and wound rolls of 1 when shooting.",calc:(ctx)=>ctx.entrenched?{rerollHit1_ranged:true,rerollWound1_ranged:true,note:"Entrenched: re-roll hit & wound 1s (ranged)"}:{note:"Stealth in terrain; Entrenched inactive"}},
+  "stormlance task force":{name:"Stormlance Task Force",dp:3,disp:'DI',rule:"Lightning Assault",desc:"Units can Advance and Charge, and Fall Back and Charge. Ideal for Mounted, Bikers, and Jump Pack units.",calc:(ctx)=>({note:"Advance+Charge and Fall Back+Charge — positional"})},
+  "1st company task force":{name:"1st Company Task Force",dp:2,disp:'TH',rule:"Extremis-Level Threat",desc:"Once per battle, a Veteran unit can re-roll Wound rolls vs its Oath of Moment target. Veterans holding objectives retain control when they vacate (Duty and Honour stratagem).",calc:(ctx)=>({note:"Once-per-battle wound re-roll vs Oath target"})},
+  "anvil siege force":{name:"Anvil Siege Force",dp:2,disp:'TH',rule:"Armoured Wrath",desc:"All weapons gain HEAVY. Weapons already with HEAVY get +1 to Wound rolls. Suits fire-support armies.",calc:(ctx)=>({extraWound1_heavy:true,note:"All weapons HEAVY; pre-existing HEAVY +1 to Wound"})},
+  "bastion task force":{name:"Bastion Task Force",dp:2,disp:'TH',rule:"Steadfast Defenders",desc:"+1 to Wound rolls while defending a controlled objective marker. Suits garrison armies.",calc:(ctx)=>ctx.defendingObjective?{extraWound1_all:true,note:"On controlled objective: +1 to Wound rolls"}:{note:"Not defending objective — rule inactive"}},
+  "firestorm assault force":{name:"Firestorm Assault Force",dp:2,disp:'PF',rule:"Close-Range Devastation",desc:"All ranged weapons gain ASSAULT (Advance and shoot). Ranged weapons targeting units within 12\" gain +1 Strength.",calc:(ctx)=>({extraS_ranged_short:1,note:"Ranged within 12\": +1 Strength; all ranged gain ASSAULT"})},
+  "headhunter task force":{name:"Headhunter Task Force",dp:2,disp:'RE',rule:"Surgical Strike",desc:"Units can target Characters in Attached units with any weapon. Attacks gain PRECISION on Hit roll of 5+.",calc:(ctx)=>({note:"PRECISION on 5+ — character targeting unlocked"})},
+  "ironstorm spearhead":{name:"Ironstorm Spearhead",dp:2,disp:'PF',rule:"Armoured Wrath",desc:"Once per phase, one unit can re-roll a single Hit, Wound, or Damage roll (ranged or melee). Strong on heavy weapons.",calc:(ctx)=>({reroll1_any_once:true,note:"Once per phase: re-roll one Hit, Wound, or Damage roll"})},
+  "orbital assault force":{name:"Orbital Assault Force",dp:2,disp:'DI',rule:"Strike from Orbit",desc:"Units with Deep Strike can arrive in Turn 1. Units with Jump Packs or arriving via Deep Strike make a free Advance move the turn they land.",calc:(ctx)=>({note:"Turn-1 Deep Strike + free Advance on arrival"})},
+  "vanguard spearhead":{name:"Vanguard Spearhead",dp:2,disp:'RE',rule:"Shadow Masters",desc:"PHOBOS and REIVER units gain Cover. Units with Concealed remain Hidden after shooting.",calc:(ctx)=>({note:"PHOBOS/Reiver: Cover + Hidden after shooting"})},
+  "fulguris task force":{name:"Fulguris Task Force",dp:1,disp:'DI',rule:"Skystrike",desc:"SPEEDER units (Land Speeder, Storm Speeder Hailstrike/Hammerstrike/Thunderstrike) make a free Ingress move in the first Movement phase. Reactive Evasion: move Speeder D3+3\" in opponent's Movement phase (1 CP).",calc:(ctx)=>({note:"Turn-1 Speeder ingress — no damage mod"})},
+  "librarius conclave":{name:"Librarius Conclave",dp:1,disp:'RE',rule:"Psychic Disciplines",desc:"Each battle round select a Psychic Discipline — all PSYKER units and their attached unit gain it until end of round: Biomancy +2\" M; Divination re-roll hit/wound 1s; Pyromancy +1 AP within 12\"; Telekinesis -1 Str on attacks vs this unit; Telepathy ignore BS/WS/hit modifiers.",calc:(ctx)=>{switch(ctx.psychicDiscipline){case'divination':return{rerollHit1_all:true,rerollWound1_all:true,note:"Divination: re-roll hit and wound 1s"};case'pyromancy':return{note:"Pyromancy: +1 AP within 12\" (not modelled as flat dmg)"};default:return{note:"Librarius Conclave: select Psychic Discipline each round"};}}},
+  "subversion assets":{name:"Subversion Assets",dp:1,disp:'RE',rule:"Nowhere to Hide",desc:"PHOBOS and SCOUT SQUAD units gain Transhuman Perception: select visible enemy within 12\" in Shooting phase — it becomes Detected (+3\" detection range army-wide). Strike from Shadows: PHOBOS/Scout stays Hidden after shooting for 1 CP.",calc:(ctx)=>({note:"Enemy detection + Hidden retention — no damage mod"})},
+  "liberator assault group":{name:"Liberator Assault Group",dp:3,disp:'PF',rule:"Red Thirst",desc:"Each time an Adeptus Astartes unit fights after a Charge move, melee weapons gain +1 Attack and +2 Strength until end of Fight phase.",calc:(ctx)=>ctx.onCharge?{extraA_melee:1,extraS_melee:2,note:"Charged: +1A +2S on all melee weapons"}:{note:"No charge — Red Thirst inactive"}},
+  "the lost brethren":{name:"The Lost Brethren",dp:2,disp:'PF',rule:"A Noble Death in Combat",desc:"DEATH COMPANY melee attacks: re-roll Wound rolls of 1 if below Starting Strength; re-roll all failed Wound rolls if below Half-Strength. Death Company Marines gain BATTLELINE.",calc:(ctx)=>{if(!ctx.isDeathCompany)return{note:"Not DEATH COMPANY — does not apply"};if(ctx.belowHalf)return{rerollAllWounds_melee:true,note:"Below half strength: re-roll all failed wounds"};if(ctx.belowStarting)return{rerollWound1_melee:true,note:"Below starting strength: re-roll wound 1s"};return{note:"Full strength — needs casualties to activate"}}},
+  "angelic host":{name:"The Angelic Host",dp:2,disp:'DI',rule:"Upon Wings of Fire",desc:"JUMP PACK units can make a free move at end of any phase (once per unit per battle).",calc:(ctx)=>({note:ctx.hasJumpPack?"JUMP PACK: Upon Wings of Fire available":"No Jump Pack — does not apply"})},
+  "rage-cursed onslaught":{name:"Rage-Cursed Onslaught",dp:2,disp:'PF',rule:"Blood-Cursed Fury",desc:"All Adeptus Astartes units re-roll Wound rolls of 1 in melee always. On a Charge, also gain +1 Attack in melee.",calc:(ctx)=>ctx.onCharge?{rerollWound1_melee:true,extraA_melee:1,note:"Re-roll wound 1s + +1A on charge"}:{rerollWound1_melee:true,note:"Re-roll wound rolls of 1 in melee"}},
+  "legacy of grace":{name:"Legacy of Grace",dp:1,disp:'TH',rule:"Grace of Sanguinius",desc:"BLOOD ANGELS CHARACTER units (except Dante) get +1 to Advance and Charge rolls.",calc:(ctx)=>({note:"+1 Advance/Charge on Characters — positional"})}
+};
+
+const UDB={
+  "captain":{w:5,sv:2,inv:4,m:6,T:4,fnp:null,sp:["FINEST_HOUR"],tags:["CHARACTER","LEADER"],kw:["INFANTRY","CHARACTER","GRENADES","IMPERIUM","TACTICUS","CAPTAIN"],ab:[{n:"Rites of Battle",d:"Re-roll hit rolls of 1 for friendly ADEPTUS ASTARTES units within 6\"."},{n:"Finest Hour",d:"Once per battle at start of Fight phase: unit gains FIGHTS FIRST and DEVASTATING WOUNDS on melee until end of phase."}]},
+  "captain with jump pack":{w:5,sv:3,inv:4,m:12,T:4,fnp:null,sp:["FINEST_HOUR"],tags:["CHARACTER","LEADER","JUMP_PACK"],kw:["INFANTRY","CHARACTER","FLY","GRENADES","IMPERIUM","TACTICUS","CAPTAIN","JUMP PACK"],ab:[{n:"Rites of Battle",d:"Re-roll hit rolls of 1 for friendly units within 6\"."},{n:"Finest Hour",d:"Once per battle: FIGHTS FIRST + DEVASTATING WOUNDS on melee until end of Fight phase."}]},
+  "captain in terminator armour":{w:6,sv:2,inv:4,m:5,T:5,fnp:null,sp:["FINEST_HOUR"],tags:["CHARACTER","LEADER"],kw:["INFANTRY","CHARACTER","GRENADES","IMPERIUM","TERMINATOR","CAPTAIN"],ab:[{n:"Rites of Battle",d:"Re-roll hit rolls of 1 within 6\"."},{n:"Finest Hour",d:"Once per battle: FIGHTS FIRST + DEVASTATING WOUNDS on melee."}]},
+  "lieutenant":{w:4,sv:3,inv:null,m:6,T:4,fnp:null,sp:["TACTICAL_PRECISION"],tags:["CHARACTER","LEADER","SUPPORT"],kw:["INFANTRY","CHARACTER","GRENADES","IMPERIUM","TACTICUS","LIEUTENANT"],ab:[{n:"Tactical Precision",d:"While leading a unit, all weapons in that unit gain LETHAL HITS."},{n:"Target Priority",d:"Unit can shoot and charge after Falling Back."}]},
+  "lieutenant with jump pack":{w:4,sv:3,inv:null,m:12,T:4,fnp:null,sp:["TACTICAL_PRECISION"],tags:["CHARACTER","LEADER","SUPPORT","JUMP_PACK"],kw:["INFANTRY","CHARACTER","FLY","GRENADES","IMPERIUM","TACTICUS","LIEUTENANT","JUMP PACK"],ab:[{n:"Tactical Precision",d:"All weapons in attached unit gain LETHAL HITS."},{n:"Target Priority",d:"Unit can shoot and charge after Falling Back."}]},
+  "chaplain":{w:4,sv:3,inv:null,m:6,T:4,fnp:null,sp:["LITANIES"],tags:["CHARACTER","LEADER"],kw:["INFANTRY","CHARACTER","GRENADES","IMPERIUM","TACTICUS","CHAPLAIN"],ab:[{n:"Spiritual Leader",d:"Re-roll hit rolls of 1 for attached unit's melee weapons."},{n:"Litany of Hate",d:"Command phase: re-roll all melee hit rolls for the attached unit this phase."}]},
+  "chaplain with jump pack":{w:4,sv:3,inv:null,m:12,T:4,fnp:null,sp:["FIGHTS_FIRST","LITANIES"],tags:["CHARACTER","LEADER","JUMP_PACK"],kw:["INFANTRY","CHARACTER","FLY","GRENADES","IMPERIUM","CHAPLAIN","JUMP PACK"],ab:[{n:"Spiritual Leader",d:"Re-roll hit rolls of 1 for attached unit's melee weapons."},{n:"Litany of Hate",d:"Command phase: re-roll all melee hits for the unit."}]},
+  "chaplain in terminator armour":{w:5,sv:2,inv:4,m:5,T:5,fnp:null,sp:["FIGHTS_FIRST","LITANIES"],tags:["CHARACTER","LEADER"],kw:["INFANTRY","CHARACTER","GRENADES","IMPERIUM","TERMINATOR","CHAPLAIN"],ab:[{n:"Spiritual Leader",d:"Re-roll hit rolls of 1 for attached unit's melee weapons."},{n:"Litany of Hate",d:"Re-roll all melee hits for the unit."}]},
+  "librarian":{w:4,sv:3,inv:4,m:6,T:4,fnp:null,sp:["PSYCHIC"],tags:["CHARACTER","LEADER","PSYKER"],kw:["INFANTRY","CHARACTER","GRENADES","IMPERIUM","TACTICUS","LIBRARIAN","PSYKER"],ab:[{n:"Psychic Mastery",d:"Cast psychic powers; Smite deals D3 mortal wounds on 4+."},{n:"Psychic Hood",d:"-1 to enemy psychic tests within 12\"."}]},
+  "librarian in terminator armour":{w:4,sv:2,inv:4,m:5,T:5,fnp:null,sp:["PSYCHIC"],tags:["CHARACTER","LEADER","PSYKER"],kw:["INFANTRY","CHARACTER","GRENADES","IMPERIUM","TERMINATOR","LIBRARIAN","PSYKER"],ab:[{n:"Psychic Mastery",d:"Cast psychic powers; Smite D3 mortal wounds."},{n:"Psychic Hood",d:"-1 to enemy psychic tests within 12\"."}]},
+  "techmarine":{w:4,sv:2,inv:null,m:6,T:4,fnp:null,sp:["BLESSING_OMNISSIAH"],tags:["CHARACTER","SUPPORT"],kw:["INFANTRY","CHARACTER","GRENADES","IMPERIUM","TACTICUS","TECHMARINE"],ab:[{n:"Blessing of the Omnissiah",d:"End of each Movement phase: repair one friendly VEHICLE within 3\", restore D3 wounds."}]},
+  "ancient":{w:3,sv:3,inv:null,m:6,T:4,fnp:null,sp:[],tags:["CHARACTER","SUPPORT"],kw:["INFANTRY","CHARACTER","GRENADES","IMPERIUM","TACTICUS","ANCIENT"],ab:[{n:"Ancient's Aura",d:"Friendly ADEPTUS ASTARTES units within 6\" that are destroyed can make a free attack before removal."}]},
+  "apothecary":{w:4,sv:3,inv:null,m:6,T:4,fnp:null,sp:[],tags:["CHARACTER","SUPPORT"],kw:["INFANTRY","CHARACTER","GRENADES","IMPERIUM","TACTICUS","APOTHECARY"],ab:[{n:"Narthecium",d:"Attached unit has FNP 5+. End of Fight phase: attempt to revive one model (4+ roll)."}]},
+  "intercessor squad":{w:2,sv:3,inv:null,m:6,T:4,fnp:null,sp:["OBJ_SECURED"],tags:["BATTLELINE"],kw:["INFANTRY","BATTLELINE","GRENADES","IMPERIUM","TACTICUS"],ab:[{n:"Objective Secured",d:"Models with OC 2+ make this unit dominant on objectives against standard infantry."}]},
+  "assault intercessor squad":{w:2,sv:3,inv:null,m:6,T:4,fnp:null,sp:["OBJ_SECURED"],tags:["BATTLELINE"],kw:["INFANTRY","BATTLELINE","GRENADES","IMPERIUM","TACTICUS"],ab:[{n:"Objective Secured",d:"Higher OC secures objectives."}]},
+  "assault intercessors with jump packs":{w:2,sv:3,inv:null,m:12,T:4,fnp:null,sp:[],tags:["BATTLELINE","JUMP_PACK"],kw:["INFANTRY","BATTLELINE","FLY","GRENADES","IMPERIUM","TACTICUS","JUMP PACK"],ab:[]},
+  "assault intercessor sergeant with jump pack":{w:3,sv:3,inv:null,m:12,T:4,fnp:null,sp:[],tags:["BATTLELINE","JUMP_PACK"],kw:["INFANTRY","BATTLELINE","FLY","GRENADES","IMPERIUM","TACTICUS","JUMP PACK"],ab:[]},
+  "death company marine with jump packs":{w:2,sv:3,inv:null,m:12,T:4,fnp:null,sp:["FIGHTS_FIRST","LETHAL_HITS_MELEE"],tags:["BATTLELINE","JUMP_PACK","DEATH_COMPANY"],kw:["INFANTRY","BATTLELINE","FLY","GRENADES","IMPERIUM","DEATH COMPANY","JUMP PACK"],ab:[{n:"Black Rage",d:"FIGHTS FIRST. Melee weapons have LETHAL HITS."}]},
+  "death company marine":{w:2,sv:3,inv:null,m:6,T:4,fnp:null,sp:["FIGHTS_FIRST","LETHAL_HITS_MELEE"],tags:["BATTLELINE","DEATH_COMPANY"],kw:["INFANTRY","BATTLELINE","GRENADES","IMPERIUM","DEATH COMPANY"],ab:[{n:"Black Rage",d:"FIGHTS FIRST. Melee weapons have LETHAL HITS."}]},
+  "terminator squad":{w:3,sv:2,inv:4,m:5,T:5,fnp:null,sp:[],tags:["TERMINATOR"],kw:["INFANTRY","GRENADES","IMPERIUM","TERMINATOR"],ab:[{n:"Teleport Strike",d:"Unit has DEEP STRIKE."}]},
+  "terminator assault squad":{w:3,sv:2,inv:4,m:5,T:5,fnp:null,sp:["FIGHTS_FIRST"],tags:["TERMINATOR"],kw:["INFANTRY","GRENADES","IMPERIUM","TERMINATOR"],ab:[{n:"Storm Shield",d:"4+ Invulnerable save."},{n:"Teleport Strike",d:"DEEP STRIKE."}]},
+  "assault terminator sergeant":{w:3,sv:2,inv:4,m:5,T:5,fnp:null,sp:[],tags:["TERMINATOR"],kw:["INFANTRY","GRENADES","IMPERIUM","TERMINATOR"],ab:[]},
+  "assault terminator":{w:3,sv:2,inv:4,m:5,T:5,fnp:null,sp:[],tags:["TERMINATOR"],kw:["INFANTRY","GRENADES","IMPERIUM","TERMINATOR"],ab:[]},
+  "sternguard veteran squad":{w:2,sv:3,inv:null,m:6,T:4,fnp:null,sp:[],tags:[],kw:["INFANTRY","GRENADES","IMPERIUM","TACTICUS"],ab:[{n:"Veteran Warriors",d:"Sternguard bolt rifles have AP-2 D2, superior to standard bolters."}]},
+  "sternguard veteran sergeant":{w:3,sv:3,inv:null,m:6,T:4,fnp:null,sp:[],tags:[],kw:["INFANTRY","GRENADES","IMPERIUM","TACTICUS"],ab:[]},
+  "sternguard veteran":{w:2,sv:3,inv:null,m:6,T:4,fnp:null,sp:[],tags:[],kw:["INFANTRY","GRENADES","IMPERIUM","TACTICUS"],ab:[]},
+  "vanguard veteran squad with jump packs":{w:2,sv:3,inv:5,m:12,T:4,fnp:null,sp:[],tags:["JUMP_PACK"],kw:["INFANTRY","FLY","GRENADES","IMPERIUM","TACTICUS","JUMP PACK"],ab:[{n:"Storm Shield",d:"Models with Storm Shield: Inv 4+."}]},
+  "vanguard veteran sergeant with jump pack":{w:3,sv:3,inv:5,m:12,T:4,fnp:null,sp:[],tags:["JUMP_PACK"],kw:["INFANTRY","FLY","GRENADES","IMPERIUM","TACTICUS","JUMP PACK"],ab:[]},
+  "vanguard veteran with jump pack":{w:2,sv:3,inv:5,m:12,T:4,fnp:null,sp:[],tags:["JUMP_PACK"],kw:["INFANTRY","FLY","GRENADES","IMPERIUM","TACTICUS","JUMP PACK"],ab:[]},
+  "eradicator squad":{w:2,sv:3,inv:null,m:6,T:4,fnp:null,sp:[],tags:[],kw:["INFANTRY","GRENADES","IMPERIUM","GRAVIS"],ab:[{n:"Total Obliteration",d:"When melta rifles kill a model, this unit can fire again at another target within 3\" (once per phase)."}]},
+  "eradicator sergeant":{w:3,sv:3,inv:null,m:6,T:4,fnp:null,sp:[],tags:[],kw:["INFANTRY","GRENADES","IMPERIUM","GRAVIS"],ab:[]},
+  "eradicator":{w:2,sv:3,inv:null,m:6,T:4,fnp:null,sp:[],tags:[],kw:["INFANTRY","GRENADES","IMPERIUM","GRAVIS"],ab:[]},
+  "hellblaster squad":{w:2,sv:3,inv:null,m:6,T:4,fnp:null,sp:[],tags:[],kw:["INFANTRY","GRENADES","IMPERIUM","TACTICUS"],ab:[{n:"Plasma Incinerator",d:"Overcharge: S8 AP-3 D2 HAZARDOUS. Standard: S7 AP-2 D1."}]},
+  "inceptor squad":{w:3,sv:3,inv:null,m:10,T:5,fnp:null,sp:["DEADLY_LANDING"],tags:["JUMP_PACK"],kw:["INFANTRY","FLY","GRENADES","IMPERIUM","GRAVIS","JUMP PACK"],ab:[{n:"Deadly Landing",d:"On Ingress: enemy models within 1\" each suffer 1 mortal wound."}]},
+  "aggressor squad":{w:3,sv:3,inv:null,m:5,T:5,fnp:null,sp:[],tags:[],kw:["INFANTRY","GRENADES","IMPERIUM","GRAVIS"],ab:[{n:"Auto Boltstorm Gauntlets",d:"Fire 8 shots total (4 per gauntlet); ASSAULT keyword."}]},
+  "eliminator squad":{w:2,sv:3,inv:null,m:6,T:4,fnp:null,sp:["LONE_OPERATIVE","STEALTH"],tags:["PHOBOS"],kw:["INFANTRY","GRENADES","IMPERIUM","PHOBOS"],ab:[{n:"Camo Cloak",d:"Stealth + Lone Operative."},{n:"Sniper (PRECISION)",d:"Bolt sniper rifle can target Characters in Attached units on 5+ Hit roll."}]},
+  "incursor squad":{w:2,sv:3,inv:null,m:6,T:4,fnp:null,sp:[],tags:["PHOBOS"],kw:["INFANTRY","GRENADES","IMPERIUM","PHOBOS"],ab:[{n:"Paired Combat Blades",d:"+1 Attack in melee."}]},
+  "infiltrator squad":{w:2,sv:3,inv:null,m:6,T:4,fnp:null,sp:["INFILTRATE","LONE_OPERATIVE"],tags:["PHOBOS"],kw:["INFANTRY","GRENADES","IMPERIUM","PHOBOS"],ab:[{n:"Helix Gauntlet",d:"Once per battle at end of Fight phase: attempt to revive one destroyed model."}]},
+  "scout squad":{w:1,sv:4,inv:null,m:6,T:4,fnp:null,sp:["INFILTRATE","SCOUTS_6"],tags:["SCOUT"],kw:["INFANTRY","GRENADES","IMPERIUM","SCOUT SQUAD"],ab:[{n:"Scouts 6\"",d:"Before first turn: make a 6\" move."},{n:"Concealed Positions",d:"Start Hidden if 15\"+ from all enemies."}]},
+  "dreadnought":{w:8,sv:2,inv:null,m:6,T:9,fnp:null,sp:["DEADLY_DEMISE_1"],tags:["VEHICLE"],kw:["VEHICLE","WALKER","GRENADES","IMPERIUM"],ab:[{n:"Smoke",d:"Once per battle: -1 to Hit against this model until next turn."}]},
+  "brutalis dreadnought":{w:10,sv:2,inv:null,m:8,T:9,fnp:null,sp:["FIGHTS_FIRST","DEADLY_DEMISE_1"],tags:["VEHICLE"],kw:["VEHICLE","WALKER","GRENADES","IMPERIUM"],ab:[{n:"Brutalis Charge",d:"After a Charge move, can make a free Heroic Intervention move."}]},
+  "ballistus dreadnought":{w:10,sv:2,inv:null,m:8,T:9,fnp:null,sp:["DEADLY_DEMISE_1"],tags:["VEHICLE"],kw:["VEHICLE","WALKER","GRENADES","IMPERIUM"],ab:[{n:"Targeting Protocols",d:"Re-roll one Hit or Wound roll per phase."}]},
+  "redemptor dreadnought":{w:10,sv:2,inv:null,m:8,T:9,fnp:null,sp:["DEADLY_DEMISE_1"],tags:["VEHICLE"],kw:["VEHICLE","WALKER","GRENADES","IMPERIUM"],ab:[{n:"Redemptor Fist",d:"A5 S12 AP-3 D3 DEVASTATING WOUNDS in melee."}]},
+  "death company dreadnought":{w:9,sv:2,inv:4,m:8,T:8,fnp:null,sp:["FIGHTS_FIRST","LETHAL_HITS_MELEE","DEADLY_DEMISE_1"],tags:["VEHICLE","DEATH_COMPANY"],kw:["VEHICLE","WALKER","GRENADES","IMPERIUM","DEATH COMPANY"],ab:[{n:"Driven by Fury",d:"FIGHTS FIRST. Melee weapons have LETHAL HITS. Surge move after Charge."},{n:"Black Rage",d:"Once per battle: re-roll all hit and wound rolls during a Fight phase."}]},
+  "impulsor":{w:10,sv:3,inv:5,m:12,T:7,fnp:null,sp:["DEADLY_DEMISE_D3"],tags:["VEHICLE","TRANSPORT","FRAME"],kw:["VEHICLE","TRANSPORT","FLY","IMPERIUM","FRAME"],ab:[{n:"Shield Dome",d:"5+ Invulnerable save."},{n:"Assault Vehicle",d:"Disembarked units can still charge after this vehicle moves."}]},
+  "vindicator":{w:11,sv:2,inv:null,m:10,T:10,fnp:null,sp:["DEADLY_DEMISE_D3"],tags:["VEHICLE"],kw:["VEHICLE","GRENADES","IMPERIUM"],ab:[{n:"Siege Shield",d:"Ignores penalties for moving and shooting Heavy weapons."}]},
+  "repulsor":{w:14,sv:2,inv:5,m:10,T:12,fnp:null,sp:["DEADLY_DEMISE_D6"],tags:["VEHICLE","TRANSPORT","FRAME"],kw:["VEHICLE","TRANSPORT","FLY","IMPERIUM","FRAME"],ab:[{n:"Shield Dome",d:"5+ Invulnerable save."},{n:"Hover Tank",d:"FLY; no penalty for moving and shooting Heavy weapons."}]},
+  "land raider":{w:16,sv:2,inv:null,m:10,T:12,fnp:null,sp:["DEADLY_DEMISE_D6","ASSAULT_RAMP"],tags:["VEHICLE","TRANSPORT","HEAVY_TRANSPORT"],kw:["VEHICLE","TRANSPORT","GRENADES","IMPERIUM"],ab:[{n:"Assault Ramp",d:"Units disembarking can charge the same turn."},{n:"Power of the Machine Spirit",d:"Shoot even after Advancing or Falling Back."}]},
+  "stormraven gunship":{w:14,sv:2,inv:5,m:20,T:10,fnp:null,sp:["FLY","DEADLY_DEMISE_D6"],tags:["VEHICLE","TRANSPORT","FLY"],kw:["VEHICLE","TRANSPORT","FLY","AIRCRAFT","IMPERIUM"],ab:[{n:"Hover Mode",d:"Toggle between AIRCRAFT (ignore terrain) and Hover (normal VEHICLE)."},{n:"Power of the Machine Spirit",d:"Shoot after Advancing or Falling Back."}]}
+};
+
+const WDB={
+  "bolt pistol":{t:"cq",r:12,a:1,sk:3,s:4,ap:0,d:1,kw:[]},
+  "crozius arcanum":{t:"cc",r:0,a:4,sk:3,s:6,ap:-1,d:2,kw:["LETHAL_HITS"]},
+  "astartes chainsword":{t:"cc",r:0,a:3,sk:3,s:4,ap:-1,d:1,kw:[]},
+  "eviscerator":{t:"cc",r:0,a:2,sk:4,s:8,ap:-2,d:2,kw:["DEVASTATING_WOUNDS"]},
+  "heavy bolt pistol":{t:"cq",r:18,a:1,sk:3,s:4,ap:-1,d:1,kw:[]},
+  "inferno pistol":{t:"cq",r:6,a:1,sk:3,s:8,ap:-4,d:3.5,kw:["MELTA_2"]},
+  "plasma pistol":{t:"cq",r:12,a:1,sk:3,s:7,ap:-2,d:1,kw:["HAZARDOUS"]},
+  "power fist":{t:"cc",r:0,a:3,sk:3,s:8,ap:-2,d:2,kw:[]},
+  "thunder hammer":{t:"cc",r:0,a:3,sk:4,s:8,ap:-2,d:3,kw:["DEVASTATING_WOUNDS"]},
+  "melta rifle":{t:"rng",r:18,a:1,sk:3,s:9,ap:-4,d:3.5,kw:["MELTA_2","HAZARDOUS"]},
+  "demolisher cannon":{t:"rng",r:24,a:2,sk:3,s:14,ap:-3,d:3.5,kw:["BLAST","DEVASTATING_WOUNDS"]},
+  "blood fists":{t:"cc",r:0,a:5,sk:3,s:10,ap:-3,d:3,kw:["CLEAVE_1"]},
+  "blood fist bolt rifles":{t:"rng",r:24,a:3,sk:3,s:4,ap:0,d:1,kw:["TWIN_LINKED"]},
+  "twin heavy bolter":{t:"rng",r:36,a:6,sk:3,s:5,ap:-1,d:2,kw:["TWIN_LINKED","SUSTAINED_HITS_1"]},
+  "twin icarus ironhail heavy stubber":{t:"rng",r:36,a:3,sk:3,s:7,ap:-1,d:2,kw:["TWIN_LINKED","ANTI_FLY_2"]},
+  "grav-pistol":{t:"cq",r:12,a:1,sk:3,s:5,ap:-3,d:1,kw:["ANTI_VEHICLE_2"]},
+  "storm shield":{t:"cc",r:0,a:2,sk:3,s:4,ap:0,d:1,kw:[]},
+  "vanguard veteran weapon":{t:"cc",r:0,a:3,sk:3,s:5,ap:-2,d:1,kw:[]},
+  "close combat weapon":{t:"cc",r:0,a:2,sk:3,s:4,ap:0,d:1,kw:[]},
+  "close-combat weapon":{t:"cc",r:0,a:2,sk:3,s:4,ap:0,d:1,kw:[]},
+  "armoured tracks":{t:"cc",r:0,a:3,sk:4,s:6,ap:0,d:1,kw:[]},
+  "armoured hull":{t:"cc",r:0,a:3,sk:4,s:6,ap:0,d:1,kw:[]},
+  "master-crafted bolter":{t:"rng",r:24,a:2,sk:2,s:4,ap:-1,d:2,kw:[]},
+  "sternguard bolt pistol":{t:"cq",r:12,a:1,sk:3,s:4,ap:-1,d:1,kw:[]},
+  "sternguard bolt rifle":{t:"rng",r:30,a:2,sk:3,s:4,ap:-2,d:2,kw:[]},
+  "relic shield":{t:"cc",r:0,a:2,sk:3,s:6,ap:-2,d:2,kw:[]},
+  "ironhail heavy stubber":{t:"rng",r:36,a:3,sk:3,s:5,ap:-1,d:2,kw:["SUSTAINED_HITS_1"]},
+  "storm bolter":{t:"rng",r:24,a:2,sk:3,s:4,ap:0,d:1,kw:["TWIN_LINKED"]},
+  "brutalis talons":{t:"cc",r:0,a:6,sk:3,s:10,ap:-3,d:3,kw:["DEVASTATING_WOUNDS"]},
+  "twin multi-melta":{t:"rng",r:18,a:2,sk:3,s:9,ap:-4,d:3.5,kw:["MELTA_2","TWIN_LINKED"]},
+  "heavy bolter":{t:"rng",r:36,a:3,sk:3,s:5,ap:-1,d:2,kw:["SUSTAINED_HITS_1"]},
+  "hurricane bolter":{t:"rng",r:24,a:6,sk:3,s:4,ap:0,d:1,kw:["TWIN_LINKED"]},
+  "stormstrike missile launcher":{t:"rng",r:48,a:1,sk:3,s:10,ap:-3,d:3,kw:[]},
+  "twin assault cannon":{t:"rng",r:24,a:6,sk:3,s:6,ap:-1,d:1,kw:["TWIN_LINKED","SUSTAINED_HITS_1"]},
+  "twin lightning claws":{t:"cc",r:0,a:4,sk:3,s:5,ap:-2,d:1,kw:["TWIN_LINKED","LETHAL_HITS"]},
+  "bolt rifle":{t:"rng",r:30,a:2,sk:3,s:4,ap:-1,d:1,kw:[]},
+  "auto bolt rifle":{t:"rng",r:24,a:3,sk:3,s:4,ap:0,d:1,kw:["ASSAULT"]},
+  "stalker bolt rifle":{t:"rng",r:36,a:1,sk:3,s:4,ap:-2,d:2,kw:["HEAVY"]},
+  "plasma incinerator":{t:"rng",r:24,a:2,sk:3,s:8,ap:-3,d:2,kw:["HAZARDOUS"]},
+  "macro plasma incinerator":{t:"rng",r:24,a:2,sk:3,s:9,ap:-4,d:2,kw:["HAZARDOUS"]}
+};
+
+const LEADER_DB=[
+  {match:["lieutenant"],abilities:[{name:"Tactical Precision",desc:"All weapons in the unit gain LETHAL HITS.",effect:{lethalHits_all:true}},{name:"Target Priority",desc:"Unit can shoot and charge after Falling Back.",effect:{}}]},
+  {match:["chaplain"],abilities:[{name:"Spiritual Leader / Litanies",desc:"Re-roll hit rolls of 1 for the unit's melee weapons. Litany of Hate: re-roll all melee hits.",effect:{rerollHit1_melee:true}}]},
+  {match:["captain","chapter master"],abilities:[{name:"Rites of Battle",desc:"Re-roll hit rolls of 1 for ADEPTUS ASTARTES units within 6\".",effect:{rerollHit1_all:true}},{name:"Finest Hour",desc:"Once per battle: FIGHTS FIRST + DEVASTATING WOUNDS on melee until end of Fight phase.",effect:{}}]},
+  {match:["librarian"],abilities:[{name:"Psychic Powers",desc:"Smite D3 mortal wounds on 4+. Psychic Hood: -1 to enemy psychic tests within 12\".",effect:{}}]},
+  {match:["apothecary"],abilities:[{name:"Narthecium",desc:"Attached unit has FNP 5+. At end of Fight phase: attempt to revive one model on 4+.",effect:{fnp:5}}]},
+  {match:["techmarine"],abilities:[{name:"Blessing of the Omnissiah",desc:"Repair one friendly VEHICLE within 3\" each Movement phase: restore D3 wounds.",effect:{}}]}
+];
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ORKS DATA (merged into existing dicts)
+// ══════════════════════════════════════════════════════════════════════════════
+Object.assign(UDB,{
+  "warboss":{w:6,sv:4,inv:5,m:6,T:5,fnp:null,sp:["FIGHTS_FIRST"],tags:["CHARACTER","LEADER","ORK"],kw:["INFANTRY","CHARACTER","GRENADES","ORKS","WARBOSS"],ab:[{n:"Da Biggest and da Best",d:"Waaagh! active: melee weapons +4 Attacks."},{n:"Might Is Right",d:"+1 to Hit in melee for attached unit."}]},
+  "bigboss":{w:5,sv:4,inv:5,m:6,T:5,fnp:null,sp:[],tags:["CHARACTER","LEADER","ORK"],kw:["INFANTRY","CHARACTER","GRENADES","ORKS","BIGBOSS"],ab:[{n:"Brutal Authority",d:"Re-roll hit rolls of 1 in melee. +OC2 during Waaagh!."}]},
+  "bannernob":{w:4,sv:4,inv:5,m:6,T:5,fnp:null,sp:[],tags:["CHARACTER","LEADER","ORK"],kw:["INFANTRY","CHARACTER","GRENADES","ORKS","BANNERNOB"],ab:[{n:"Waaagh! Banner",d:"Attached unit gains Inv 5+. During Waaagh!: +1 Toughness to attached unit."}]},
+  "painboy":{w:3,sv:5,inv:null,m:6,T:5,fnp:null,sp:[],tags:["CHARACTER","LEADER","ORK"],kw:["INFANTRY","CHARACTER","GRENADES","ORKS","PAINBOY"],ab:[{n:"Dok's Toolz",d:"Attached unit has Feel No Pain 5+."},{n:"Grot Orderly",d:"Once per battle: restore D3 destroyed models in Command phase."}]},
+  "weirdboy":{w:4,sv:5,inv:null,m:6,T:5,fnp:null,sp:["PSYCHIC"],tags:["CHARACTER","LEADER","ORK","PSYKER"],kw:["INFANTRY","CHARACTER","GRENADES","ORKS","PSYKER","WEIRDBOY"],ab:[{n:"'Eadbanger",d:"Psychic ranged attack, scales with unit size. HAZARDOUS if 10+ models."},{n:"Da Jump",d:"Once per battle: Deep Strike this unit. Can arrive Turn 1. On 1: D6 mortal wounds."}]},
+  "warboss in mega armour":{w:7,sv:2,inv:4,m:5,T:6,fnp:null,sp:["FIGHTS_FIRST"],tags:["CHARACTER","LEADER","ORK"],kw:["INFANTRY","CHARACTER","GRENADES","ORKS","WARBOSS","MEGA ARMOUR"],ab:[{n:"Da Biggest and da Best",d:"Waaagh! active: +4 Attacks on melee weapons."},{n:"Might Is Right",d:"+1 to Hit in melee."}]},
+  "big mek":{w:4,sv:4,inv:null,m:6,T:5,fnp:null,sp:[],tags:["CHARACTER","LEADER","ORK"],kw:["INFANTRY","CHARACTER","GRENADES","ORKS","BIG MEK"],ab:[{n:"Mek's Tools",d:"Repair one VEHICLE within 3\" each Movement phase: D3 wounds restored."}]},
+  "boyz":{w:1,sv:6,inv:null,m:6,T:5,fnp:null,sp:[],tags:["BATTLELINE","ORK"],kw:["INFANTRY","BATTLELINE","GRENADES","ORKS"],ab:[{n:"Sticky Objectives",d:"Hold objectives 1 turn after leaving."},{n:"Ork Resilience",d:"Attacker S > this T: -1 to Wound rolls."}]},
+  "gretchin":{w:1,sv:6,inv:null,m:5,T:2,fnp:null,sp:[],tags:["BATTLELINE","ORK"],kw:["INFANTRY","BATTLELINE","GRENADES","ORKS","GROTS"],ab:[{n:"Grot Shields",d:"Redirect 1 attack per phase from attached character to a Gretchin."}]},
+  "nobz":{w:2,sv:4,inv:null,m:6,T:5,fnp:null,sp:[],tags:["ORK"],kw:["INFANTRY","GRENADES","ORKS","NOBZ"],ab:[{n:"Ork Resilience",d:"Attacker S > T: -1 to Wound rolls."}]},
+  "meganobz":{w:3,sv:2,inv:4,m:5,T:6,fnp:null,sp:[],tags:["ORK"],kw:["INFANTRY","GRENADES","ORKS","NOBZ","MEGA ARMOUR"],ab:[{n:"Waaagh! Toughness",d:"During Waaagh!: Feel No Pain 4+."},{n:"Unstoppable",d:"Re-roll charge rolls."}]},
+  "breaka boyz":{w:2,sv:4,inv:null,m:6,T:5,fnp:null,sp:[],tags:["ORK"],kw:["INFANTRY","GRENADES","ORKS"],ab:[{n:"Smash Hammers",d:"ANTI-VEHICLE 4+ and ANTI-MONSTER 4+ on melee."}]},
+  "stormboyz":{w:1,sv:5,inv:null,m:12,T:5,fnp:null,sp:[],tags:["ORK","JUMP_PACK"],kw:["INFANTRY","GRENADES","ORKS","JUMP PACK"],ab:[{n:"Full Throttle",d:"Advance+Charge and Fall Back+Charge."}]},
+  "kommandos":{w:1,sv:5,inv:null,m:6,T:5,fnp:null,sp:["INFILTRATE","STEALTH"],tags:["ORK"],kw:["INFANTRY","GRENADES","ORKS","KOMMANDOS"],ab:[{n:"Sneaky Gitz",d:"Cannot be targeted by Overwatch/snap shots."}]},
+  "tankbustas":{w:1,sv:5,inv:null,m:6,T:5,fnp:null,sp:[],tags:["ORK"],kw:["INFANTRY","GRENADES","ORKS"],ab:[{n:"Tank Hunters",d:"Re-roll Hit rolls of 1 vs VEHICLE."}]},
+  "burna boyz":{w:1,sv:5,inv:null,m:6,T:5,fnp:null,sp:[],tags:["ORK"],kw:["INFANTRY","GRENADES","ORKS"],ab:[{n:"Burnaz",d:"IGNORES COVER; also usable in melee."}]},
+  "lootas":{w:2,sv:5,inv:null,m:6,T:5,fnp:null,sp:[],tags:["ORK"],kw:["INFANTRY","GRENADES","ORKS"],ab:[{n:"Deff Gunz",d:"D6+3 shots, 36\", S7 AP-1 D2."}]},
+  "flash gitz":{w:2,sv:4,inv:null,m:6,T:5,fnp:null,sp:[],tags:["ORK"],kw:["INFANTRY","GRENADES","ORKS","FLASH GITZ"],ab:[{n:"Shootier",d:"+1 BS when stationary."},{n:"Show-offs",d:"SUSTAINED HITS 1 near another Flash Gitz unit."}]},
+  "beast snagga boyz":{w:1,sv:5,inv:null,m:6,T:5,fnp:null,sp:[],tags:["ORK","BEAST_SNAGGA"],kw:["INFANTRY","GRENADES","ORKS","BEAST SNAGGA"],ab:[{n:"Squig-Riders",d:"ANTI-VEHICLE 4+ ANTI-MONSTER 4+ melee."}]},
+  "squighog boyz":{w:3,sv:4,inv:null,m:10,T:6,fnp:null,sp:[],tags:["ORK","BEAST_SNAGGA","MOUNTED"],kw:["MOUNTED","GRENADES","ORKS","BEAST SNAGGA"],ab:[{n:"Snagga",d:"ANTI-VEHICLE 4+ ANTI-MONSTER 4+ melee."}]},
+  "warbikers":{w:2,sv:4,inv:null,m:12,T:6,fnp:null,sp:[],tags:["ORK","MOUNTED","SPEED_FREEKS"],kw:["MOUNTED","GRENADES","ORKS","SPEED FREEKS"],ab:[{n:"Turbo Boost",d:"Advance 6\" flat."},{n:"Waaagh! Charge",d:"During Waaagh!: +1 to Hit in melee."}]},
+  "deff dread":{w:8,sv:3,inv:null,m:6,T:8,fnp:null,sp:["DEADLY_DEMISE_1"],tags:["VEHICLE","ORK"],kw:["VEHICLE","WALKER","GRENADES","ORKS"],ab:[{n:"Deff Dread Klaw",d:"A4 S12 AP-2 D2 CLEAVE_1."},{n:"Smoke",d:"Once per battle: -1 to Hit until next turn."}]},
+  "killa kans":{w:5,sv:3,inv:null,m:6,T:7,fnp:null,sp:[],tags:["VEHICLE","ORK"],kw:["VEHICLE","WALKER","GRENADES","ORKS"],ab:[{n:"Shooty Power Trip",d:"5-6: LETHAL HITS; 1-2: D6 mortal wounds on self."}]},
+  "battlewagon":{w:14,sv:3,inv:null,m:10,T:9,fnp:null,sp:["DEADLY_DEMISE_D3"],tags:["VEHICLE","TRANSPORT","ORK"],kw:["VEHICLE","TRANSPORT","GRENADES","ORKS"],ab:[{n:"Open-Topped",d:"Passengers shoot at -1 BS."},{n:"'Ard as Nails",d:"Ignore AP-1 on incoming attacks."}]},
+  "trukk":{w:8,sv:4,inv:null,m:12,T:7,fnp:null,sp:["DEADLY_DEMISE_1"],tags:["VEHICLE","TRANSPORT","ORK","SPEED_FREEKS"],kw:["VEHICLE","TRANSPORT","GRENADES","ORKS","SPEED FREEKS"],ab:[{n:"Ramshackle",d:"D6 per mortal wound: on 6+ ignored."},{n:"Fast Vehicle",d:"Advance 6\" flat."}]},
+  "stompa":{w:40,sv:2,inv:5,m:8,T:14,fnp:null,sp:["DEADLY_DEMISE_D6"],tags:["VEHICLE","TITANIC","ORK"],kw:["VEHICLE","WALKER","TITANIC","GRENADES","ORKS"],ab:[{n:"Gaze of Mork",d:"S16 AP-4 D6+6 DEVASTATING WOUNDS."},{n:"Supa-Stompa Klaw",d:"A6 S18 AP-4 D3+6 DEVASTATING WOUNDS melee."}]},
+});
+
+Object.assign(WDB,{
+  "choppa":          {t:"cc", r:0,  a:2,   sk:3,s:5, ap:-1,d:1,   kw:[]},
+  "big choppa":      {t:"cc", r:0,  a:2,   sk:3,s:7, ap:-1,d:2,   kw:[]},
+  "kustom choppa":   {t:"cc", r:0,  a:6,   sk:2,s:8, ap:-2,d:2,   kw:["CLEAVE_1"]},
+  "power klaw":      {t:"cc", r:0,  a:3,   sk:3,s:8, ap:-2,d:2,   kw:[]},
+  "slugga":          {t:"cq", r:12, a:1,   sk:5,s:4, ap:0, d:1,   kw:[]},
+  "shoota":          {t:"rng",r:18, a:2,   sk:5,s:4, ap:0, d:1,   kw:[]},
+  "kustom shoota":   {t:"rng",r:18, a:4,   sk:5,s:4, ap:0, d:1,   kw:[]},
+  "rokkit launcha":  {t:"rng",r:24, a:1,   sk:5,s:10,ap:-2,d:3,   kw:[]},
+  "big shoota":      {t:"rng",r:36, a:3,   sk:5,s:5, ap:-1,d:1,   kw:["SUSTAINED_HITS_1"]},
+  "smasha hammer":   {t:"cc", r:0,  a:2,   sk:3,s:6, ap:-2,d:3,   kw:[]},
+  "tankhammer":      {t:"cc", r:0,  a:2,   sk:3,s:8, ap:-3,d:3,   kw:["DEVASTATING_WOUNDS","HAZARDOUS"]},
+  "burna":           {t:"cc", r:0,  a:2,   sk:3,s:4, ap:-1,d:1,   kw:[]},
+  "deff gun":        {t:"rng",r:36, a:3.5, sk:5,s:7, ap:-1,d:2,   kw:[]},
+  "deff dread klaw": {t:"cc", r:0,  a:4,   sk:3,s:12,ap:-2,d:2,   kw:["CLEAVE_1"]},
+  "killkannon":      {t:"rng",r:24, a:3,   sk:5,s:8, ap:-2,d:2,   kw:["BLAST"]},
+  "'urty syringe":   {t:"cc", r:0,  a:3,   sk:3,s:6, ap:-1,d:1,   kw:["DEVASTATING_WOUNDS"]},
+  "'eadbanger":      {t:"rng",r:18, a:3,   sk:4,s:6, ap:-2,d:2,   kw:["BLAST"]},
+});
+
+Object.assign(DETACHMENT_DB,{
+  "war horde":{name:"War Horde",dp:3,disp:'PF',rule:"Waaagh!",desc:"Once per battle: Waaagh! — all ORKS Advance+Charge, melee +1S +1A, 5+ Invulnerable save until next Command phase.",calc:(ctx)=>ctx.waaagh?{extraA_melee:1,extraS_melee:1,note:"Waaagh! active: +1A +1S melee, Inv 5+, Advance+Charge"}:{note:"Waaagh! not yet called"}},
+  "green tide":{name:"Green Tide",dp:2,disp:'PF',rule:"Tide of Bodies",desc:"BOYZ units of 20+ models gain LETHAL HITS on melee. Extended sticky objectives.",calc:(ctx)=>ctx.bigMob?{lethalHits_melee:true,note:"20+ Boyz: LETHAL HITS on melee"}:{note:"Requires 20+ Boyz"}},
+  "bully boyz":{name:"Bully Boyz",dp:2,disp:'PF',rule:"Only da Strongest",desc:"NOBZ/MEGANOBZ/WARBOSS re-roll Wound rolls of 1 in melee. Second Waaagh! available for these units once per battle.",calc:(ctx)=>({rerollWound1_melee:true,note:"Re-roll wound 1s (Nobz/Meganobz/Warboss)"})},
+  "kult of speed":{name:"Kult of Speed",dp:2,disp:'DI',rule:"Fast and Loud",desc:"SPEED FREEKS Advance+Charge always. On charge: +1 to Wound rolls.",calc:(ctx)=>ctx.onCharge?{note:"Speed Freeks on charge: +1 to Wound (positional)"}:{note:"Speed Freeks: Advance+Charge always"}},
+  "dread mob":{name:"Dread Mob",dp:2,disp:'PF',rule:"Big Gunz and Walkers",desc:"ORK WALKER units re-roll one Hit or Wound roll per phase. Infantry within 6\" of WALKER gain LETHAL HITS on ranged.",calc:(ctx)=>({note:"Walkers: re-roll Hit or Wound; Infantry near Walker: LETHAL HITS ranged"})},
+  "da big hunt":{name:"Da Big Hunt",dp:2,disp:'RE',rule:"Hunt the Monsters",desc:"BEAST SNAGGA units +1 Wound vs MONSTER and VEHICLE. Squighog Boyz gain DEVASTATING WOUNDS on charge.",calc:(ctx)=>({note:"Beast Snaggas: +1 wound vs Monster/Vehicle"})},
+  "freebooter krew":{name:"Freebooter Krew",dp:2,disp:'RE',rule:"Hired Guns",desc:"Re-roll one Hit roll per phase per unit. FLASH GITZ and LOOTAS permanently gain SUSTAINED HITS 1.",calc:(ctx)=>({note:"Re-roll 1 Hit/phase; Flash Gitz/Lootas: SUSTAINED HITS 1"})},
+  "blitz brigade":{name:"Blitz Brigade",dp:2,disp:'DI',rule:"Fasta Than Yooz",desc:"ORK INFANTRY CHARACTER units + attached bodyguard can disembark from moved Transport and charge. Transports Advance 6\" flat.",calc:(ctx)=>({note:"Disembark+Charge from moved Transport; Transports Advance 6\""})},
+  "speedwaaagh":{name:"Speedwaaagh!",dp:2,disp:'DI',rule:"Vroom Vroom",desc:"SPEED FREEKS and WARBIKERS Advance+Charge always. During Waaagh!: +1 to Wound rolls.",calc:(ctx)=>ctx.waaagh?{note:"Waaagh!+Speedwaaagh: +1 Wound + Advance+Charge"}:{note:"Speed Freeks: Advance+Charge always"}},
+  "more dakka":{name:"More Dakka!",dp:1,disp:'PF',rule:"Dakka Dakka Dakka",desc:"Once per phase: one unit fires one ranged weapon again (D6 shots). During Waaagh!: all ranged gain SUSTAINED HITS 1.",calc:(ctx)=>ctx.waaagh?{note:"Waaagh!: all ranged SUSTAINED HITS 1"}:{note:"Once-per-phase bonus fire"}},
+  "rollin deff":{name:"Rollin' Deff",dp:1,disp:'PF',rule:"Thundering Wagons",desc:"BATTLEWAGON/HUNTA RIG/KILL RIG: auto-advance 6\", re-roll charge rolls.",calc:(ctx)=>({note:"Wagons: auto-advance 6\" + re-roll charge"})},
+  "taktikal brigade":{name:"Taktikal Brigade",dp:1,disp:'RE',rule:"Kunnin' Plan",desc:"One ORKS unit performs a free action each round. KOMMANDOS and STORMBOYZ can Fall Back+Charge.",calc:(ctx)=>({note:"Free action/round; Kommandos/Stormboyz: Fall Back+Charge"})},
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════════════════════
+function getLeaderAbilities(name){if(!name)return[];const n=name.toLowerCase();for(const e of LEADER_DB)if(e.match.some(m=>n.includes(m)))return e.abilities;return[];}
+function mProf(name){const n=name.toLowerCase();for(const k of Object.keys(UDB))if(n.includes(k)||k.includes(n))return{...UDB[k],sp:[...UDB[k].sp],tags:[...UDB[k].tags],kw:[...UDB[k].kw],ab:[...UDB[k].ab]};return{w:2,sv:3,inv:null,m:6,T:4,fnp:null,sp:[],tags:[],kw:[],ab:[]};}
+function mWeap(name){const n=name.toLowerCase().trim();if(WDB[n])return{...WDB[n],name,kw:[...WDB[n].kw]};for(const k of Object.keys(WDB))if(n.includes(k)||k.includes(n))return{...WDB[k],name,kw:[...WDB[k].kw]};return null;}
+function isFig(s){const l=s.toLowerCase();return["sergeant","marine","intercessor","eradicator","veteran","dreadnought","chaplain","vindicator","character","nob","warrior","terminator","guardian","lieutenant","impulsor","stormraven","librarian","captain","ancient","apothecary","techmarine","aggressor","inceptor","hellblaster","scout","infiltrator","incursor","eliminator","warboss","bigboss","painboy","weirdboy","bannernob","boyz","gretchin","nobz","meganobz","stormboyz","kommandos","tankbusta","burna","loota","gitz","squighog","warbiker","battlewagon","trukk","stompa","dread"].some(x=>l.includes(x));}
+function getModels(u){return(u.figures||[]).reduce((s,f)=>s+f.qty,0)||1;}
+function getAllWpn(u){const a=[...u.weapons];for(const f of u.figures||[])a.push(...(f.weapons||[]));const acc={};for(const w of a){if(!w)continue;if(acc[w.name])acc[w.name].qty=(acc[w.name].qty||1)+(w.qty||1);else acc[w.name]={...w,qty:w.qty||1};}return Object.values(acc);}
+function detectDetachment(name){const n=(name||'').toLowerCase();for(const key of Object.keys(DETACHMENT_DB))if(n.includes(key))return DETACHMENT_DB[key];return null;}
+function dispCls(d){return{TH:'disp-th',PF:'disp-pf',DI:'disp-di',RE:'disp-re',PA:'disp-pa'}[d]||'';}
+function showTab(t){document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.section').forEach(e=>e.classList.remove('active'));document.querySelector(`[onclick="showTab('${t}')"]`).classList.add('active');document.getElementById('s-'+t).classList.add('active');if(t==='detachments')buildDetachmentsTab();if(t==='library')buildLibraryTab();
+  // Charts created while their tab was hidden (display:none) measure 0x0 and a plain
+  // .resize() doesn't reliably recover — recreate them now that the tab is visible.
+  if(t==='stats')renderStatsCharts();
+  if(t==='sim')renderSimChart();
+}
+function loadSample(k){document.getElementById('roster-input').value=SAMPLES[k];}
+let R=null,chartSt=null,chartRadar=null,chartEff=null,chartSim=null;
+
+const SIZE_KW=/^(combat patrol|incursion|strike force|onslaught)/i;
+const SECTION_MAP={'BATTLELINE':'battleline','CHARACTERS':'character','DEDICATED TRANSPORTS':'transport','OTHER DATASHEETS':'other','Attached Units':'attached'};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PARSER
+// ══════════════════════════════════════════════════════════════════════════════
+function parseRoster(){
+  const raw=document.getElementById('roster-input').value.trim();
+  const errEl=document.getElementById('err-parse');errEl.style.display='none';
+  if(!raw){errEl.textContent='Paste a roster first.';errEl.style.display='block';return;}
+
+  // ── Normalise input ────────────────────────────────────────────────────────
+  let src = raw
+    // European thousands separator: "1.000 Points" → "1000 Points"
+    .replace(/\((\d+)\.(\d{3})\s*[Pp]ts\.?\)/g, '($1$2 pts)')
+    .replace(/\((\d+)\.(\d{3})\s*[Pp]oints\)/g, '($1$2 Points)')
+    // Normalise "pts" → "points" for uniform matching
+    .replace(/\((\d+)\s*pts\.?\)/gi, '($1 points)')
+    // Normalise ◦ → •
+    .replace(/◦/g, '•')
+    // Normalise "Unit N" → "Attached Unit N" (bare "Unit 1", "Unit 2"...)
+    .replace(/^Unit (\d+)\s*$/gm, 'Attached Unit $1')
+    // Normalise "Other Units:" → "OTHER DATASHEETS"
+    .replace(/^Other Units:\s*$/gmi, 'OTHER DATASHEETS')
+    // Normalise "Bodyguard (Battleline)" → "Bodyguard"
+    .replace(/Bodyguard\s*\([^)]+\)/gi, 'Bodyguard');
+
+  const lines = src.split('\n');
+  const roster={name:'',faction:'',subfaction:'',detachment:'',detachmentObj:null,points:0,units:[]};
+  let hi=0;
+
+  // Line 0: roster name
+  roster.name=(lines[hi]?.trim()||'Roster').replace(/\s*\(\d[\d.,]*\s*(?:points?|pts\.?)\)\s*$/i,'').trim();
+  const pm=lines[hi]?.match(/\((\d[\d.,]*)\s*(?:points?|pts\.?)\)/i);
+  if(pm) roster.points=parseInt(pm[1].replace(/[.,]/g,''));
+  roster.faction=lines[++hi]?.trim()||'';
+  roster.subfaction=lines[++hi]?.trim()||'';
+
+  // Find detachment line
+  let di=hi+1;
+  while(di<lines.length&&!lines[di]?.trim()) di++;
+  if(SIZE_KW.test(lines[di]?.trim()||'')) di++;
+  while(di<lines.length&&!lines[di]?.trim()) di++;
+  roster.detachment=lines[di]?.trim()||'';
+  roster.detachmentObj=detectDetachment(roster.detachment);
+
+  // ── Detect format ──────────────────────────────────────────────────────────
+  const hasPerUnitPoints = lines.some(l=>{
+    const t=l.trim();
+    return /^[^•\s].+\(\d+\s*points\)\s*$/.test(t) &&
+           !/^(combat patrol|incursion|strike force|onslaught)/i.test(t);
+  });
+
+  const units=[];let sec='other',ag=null,cu=null,cf=null,agCounter=0;
+  function flushF(){if(cf&&cu)cu.figures.push(cf);cf=null;}
+  function flushU(){flushF();if(cu)units.push(cu);cu=null;}
+
+  for(const line of lines){
+    const tr=line.trim();if(!tr)continue;
+
+    // Section headers
+    if(SECTION_MAP[tr]!==undefined){sec=SECTION_MAP[tr];flushU();ag=null;continue;}
+
+    // Attached Unit N marker
+    if(/^Attached Unit \d+$/i.test(tr)){flushU();ag=tr;sec='attached';continue;}
+
+    // Skip metadata
+    if(/^Force Dispositions/i.test(tr)) continue;
+    if(SIZE_KW.test(tr)) continue;
+    if(/^\(?\d+\s*(?:Detachment Points?)\)?$/i.test(tr)) continue;
+    if(/^Enhancement:/i.test(tr)) continue;
+    if(/^Warlord:/i.test(tr)) continue;
+
+    // "Attached as:" role
+    if(/^•\s*Attached as:/i.test(tr)){
+      const rm=tr.match(/Attached as:\s*(.+)/);
+      if(rm&&cu){
+        cu.role=rm[1].replace(/\(.*?\)/,'').trim();
+        if(!cu.ag){
+          const isLeader=cu.role.toLowerCase().includes('leader')||cu.role.toLowerCase().includes('support');
+          if(isLeader){
+            agCounter++;
+            ag='Attached Unit '+agCounter;
+          }
+          cu.ag=ag;
+          cu.section='attached';
+        }
+      }
+      continue;
+    }
+
+    // Warlord flag
+    if(/^•?\s*Warlord$/.test(tr)){if(cu)cu.isWarlord=true;continue;}
+
+    // ── Unit line WITH points ────────────────────────────────────────────────
+    const umA=tr.match(/^(.+?)\s*\((\d[\d.,]*)\s*points?\)\s*$/i);
+    if(umA&&!tr.startsWith('•')&&!tr.startsWith('-')){
+      if(umA[1].trim()===roster.name.trim()) continue;
+      flushU();
+      const uN=umA[1].trim();
+      const pts=parseInt(umA[2].replace(/[.,]/g,''));
+      cu={name:uN,points:pts,section:sec,
+          ag:sec==='attached'?(ag||null):null,
+          role:null,isWarlord:false,figures:[],weapons:[],
+          profile:mProf(uN),leaderAbilities:[],leadedBy:null,leadsUnit:null};
+      continue;
+    }
+
+    // ── Unit line WITHOUT points (Format B) ─────────────────────────────────
+    if(!tr.startsWith('•')&&!tr.startsWith('-')&&!hasPerUnitPoints){
+      if(/^[A-Z][A-Za-z0-9 '\-\.]{2,60}$/.test(tr)&&
+         tr!==roster.faction&&tr!==roster.subfaction&&
+         tr!==roster.detachment&&!tr.startsWith(roster.name)){
+        flushU();
+        cu={name:tr,points:0,section:sec,ag:sec==='attached'?(ag||null):null,
+            role:null,isWarlord:false,figures:[],weapons:[],
+            profile:mProf(tr),leaderAbilities:[],leadedBy:null,leadsUnit:null};
+        continue;
+      }
+    }
+
+    if(!cu) continue;
+
+    // ── Figures: "Nx Name" or "• Nx Name" ───────────────────────────────────
+    const fm=tr.match(/^•?\s*(\d+)x\s+(.+)$/);
+    if(fm){
+      const qty=parseInt(fm[1]),fn=fm[2].trim();
+      if(isFig(fn)){flushF();cf={name:fn,qty,profile:mProf(fn),weapons:[]};}
+      else{const w=mWeap(fn);if(w){w.qty=qty;if(cf)cf.weapons.push(w);else cu.weapons.push(w);}}
+      continue;
+    }
+
+    // ── Bare weapon: "• Weapon name" ────────────────────────────────────────
+    if(tr.startsWith('•')){
+      const bare=tr.replace(/^•\s*/,'').trim();
+      if(/^(Attached as|Warlord|Enhancement)/i.test(bare)) continue;
+      const w=mWeap(bare);
+      if(w){w.qty=1;if(cf)cf.weapons.push(w);else cu.weapons.push(w);}
+    }
+  }
+  flushU();
+
+  if(!units.length){errEl.textContent='No units recognised. Check format or paste manually.';errEl.style.display='block';return;}
+
+  // ── Leader → bodyguard links ─────────────────────────────────────────────
+  const agMap={};
+  for(const u of units){
+    if(u.section==='attached'&&u.ag){
+      if(!agMap[u.ag])agMap[u.ag]={leader:null,bodyguard:null};
+      const isL=u.role&&(u.role.toLowerCase().includes('leader')||u.role.toLowerCase().includes('support'));
+      if(isL) agMap[u.ag].leader=u; else agMap[u.ag].bodyguard=u;
+    }
+  }
+  for(const grp of Object.values(agMap)){
+    if(grp.leader&&grp.bodyguard){
+      grp.bodyguard.leaderAbilities=getLeaderAbilities(grp.leader.name);
+      grp.bodyguard.leadedBy=grp.leader.name;
+      grp.leader.leadsUnit=grp.bodyguard.name;
+    }
+  }
+
+  roster.units=units;R=roster;
+  try{
+    buildUnits();buildStats();buildSim();showTab('units');
+  }catch(e){
+    console.error('[Analyze] render failed:', e);
+  }
+  saveRosterToLibrary();
+}
+
+function resolveModifiers(unit,detachment,ctx){
+  const mod={extraA_melee:0,extraS_melee:0,lethalHits_all:false,lethalHits_melee:false,rerollHit1_melee:false,rerollHit1_all:false,rerollWound1_melee:false,rerollAllWounds_melee:false,fnp:null,notes:[]};
+  for(const ab of(unit.leaderAbilities||[])){
+    if(ab.effect.lethalHits_all){mod.lethalHits_all=true;mod.notes.push(`${ab.name}: LETHAL HITS`);}
+    if(ab.effect.rerollHit1_melee){mod.rerollHit1_melee=true;mod.notes.push(`${ab.name}: re-roll hit 1s melee`);}
+    if(ab.effect.rerollHit1_all){mod.rerollHit1_all=true;mod.notes.push(`${ab.name}: re-roll hit 1s`);}
+    if(ab.effect.fnp){mod.fnp=ab.effect.fnp;mod.notes.push(`${ab.name}: FNP ${ab.effect.fnp}+`);}
+  }
+  if(detachment){const dm=detachment.calc(ctx);if(dm.extraA_melee)mod.extraA_melee+=dm.extraA_melee;if(dm.extraS_melee)mod.extraS_melee+=dm.extraS_melee;if(dm.rerollWound1_melee)mod.rerollWound1_melee=true;if(dm.rerollAllWounds_melee)mod.rerollAllWounds_melee=true;if(dm.rerollHit1_all)mod.rerollHit1_all=true;if(dm.lethalHits_melee)mod.lethalHits_melee=true;if(dm.note)mod.notes.push(`${detachment.rule}: ${dm.note}`);}
+  return mod;
+}
+
+function kwB(k){const m={DEVASTATING_WOUNDS:['kdev','Devastating'],LETHAL_HITS:['klth','Lethal Hits'],TWIN_LINKED:['ktwn','Twin-Linked'],BLAST:['kbst','Blast'],CLEAVE_1:['kclv','Cleave'],HAZARDOUS:['khz','Hazardous'],SUSTAINED_HITS_1:['ksu','Sustained 1'],MELTA_2:['kmlt','Melta'],ANTI_FLY_2:['ktwn','Anti-Fly'],ANTI_VEHICLE_2:['ktwn','Anti-Veh']};const v=m[k];return v?`<span class="kp ${v[0]}" data-rule="${k}">${v[1]}</span>`:'';;}
+const NOTABLE_KW=["FIGHTS_FIRST","FIGHTS FIRST","DEEP STRIKE","LETHAL_HITS","DEVASTATING_WOUNDS","STEALTH","LONE OPERATIVE","INFILTRATE","PSYCHIC"];
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RULE GLOSSARY + TAP/HOVER POPOVER — lets a keyword pill (e.g. "Devastating",
+// "FLY") show its definition on hover (desktop) or tap (touch), for quick
+// in-game lookup without a rulebook. Not exhaustive — faction/flavour keywords
+// with no stable rules-text (IMPERIUM, ORKS, CHAPLAIN...) are left out on purpose
+// rather than guessed at.
+// ══════════════════════════════════════════════════════════════════════════════
+const RULES_GLOSSARY={
+  'FIGHTS FIRST':'Strikes before units without this keyword in the Fight phase.',
+  'DEVASTATING WOUNDS':'A Critical Wound (unmodified 6 to wound) inflicts mortal wounds instead of the normal save/damage sequence.',
+  'LETHAL HITS':'A Critical Hit (unmodified 6 to hit) automatically wounds — no wound roll needed.',
+  'TWIN LINKED':'Re-roll all failed wound rolls for this weapon.',
+  'BLAST':'+1 Attack for every full 5 models in the target unit.',
+  'CLEAVE 1':'Target\'s Invulnerable save (if any) is worsened by 1 against this attack.',
+  'SUSTAINED HITS 1':'A Critical Hit (unmodified 6 to hit) scores 1 additional hit.',
+  'HAZARDOUS':'After firing, roll a D6 per shot: on a 1, the bearer suffers a mortal wound.',
+  'MELTA':'+X Damage against targets within half this weapon\'s range.',
+  'COVER (11TH)':'Ranged attacks against this unit suffer -1 to hit.',
+  'INVULNERABLE SAVE':'A save that cannot be modified or bypassed by the attacker\'s Armour Penetration.',
+  'ANTI FLY 2':'Wound rolls of 2+ against FLY units are automatically Critical Wounds.',
+  'ANTI VEHICLE 2':'Wound rolls of 2+ against VEHICLE units are automatically Critical Wounds.',
+  'FLY':'Can move over models, terrain and enemy units, ignoring Engagement Range except when charging.',
+  'BATTLELINE':'Core troop choice — often gets extra benefits from detachment rules (objective control, etc.).',
+  'INFANTRY':'Base unit type — most infantry-only stratagems/detachment rules apply.',
+  'VEHICLE':'Immune to Battle-shock tests; no unit coherency requirement between models.',
+  'WALKER':'A Vehicle that still fights in melee like an Infantry/Monster model.',
+  'TRANSPORT':'Can embark other eligible units, providing protection while carried.',
+  'CHARACTER':'Can be attached to a Bodyguard unit if it also has the Leader ability.',
+  'GRENADES':'Can use the Grenade Stratagem once per battle.',
+  'DEADLY DEMISE 1':'When destroyed, roll a D6: on a 6, all units within 6" suffer 1 mortal wound.',
+  'DEADLY DEMISE D3':'When destroyed, roll a D6: on a 6, all units within 6" suffer D3 mortal wounds.',
+  'DEADLY DEMISE D6':'When destroyed, roll a D6: on a 6, all units within 6" suffer D6 mortal wounds.',
+  'STEALTH':'Ranged attacks against this unit suffer an additional -1 to hit (stacks with Cover).',
+  'INFILTRATE':'Can be set up during deployment anywhere more than 9" from the enemy deployment zone and enemy units.',
+  'DEEP STRIKE':'Can be set up from Reserves anywhere more than 9" from enemy units, instead of normal deployment.',
+  'ASSAULT RAMP':'Units disembarking from this Transport can still declare a charge that turn.',
+  'LONE OPERATIVE':'Cannot be selected as the target of a ranged attack unless the attacker is within 12".',
+  'PSYCHIC':'This unit/weapon uses Psychic abilities and is affected by anti-Psyker rules.',
+};
+function ruleText(raw){ return raw ? RULES_GLOSSARY[raw.toUpperCase().replace(/_/g,' ').trim()] || null : null; }
+
+let _rulePopoverEl=null,_rulePopoverFor=null;
+function hideRulePopover(){ if(_rulePopoverEl){_rulePopoverEl.remove();_rulePopoverEl=null;_rulePopoverFor=null;} }
+function showRulePopover(target,text){
+  hideRulePopover();
+  const box=document.createElement('div');
+  box.className='rule-popover';
+  box.textContent=text;
+  document.body.appendChild(box);
+  const r=target.getBoundingClientRect();
+  let left=window.scrollX+r.left, top=window.scrollY+r.bottom+6;
+  const maxLeft=window.scrollX+document.documentElement.clientWidth-box.offsetWidth-8;
+  if(left>maxLeft)left=Math.max(8,maxLeft);
+  box.style.left=left+'px';box.style.top=top+'px';
+  _rulePopoverEl=box;_rulePopoverFor=target;
+}
+// pointerover/out (gated to mouse) = hover on desktop; click = tap on touch, and
+// toggles the same pill on desktop too. Gating hover to pointerType 'mouse' avoids
+// the synthetic mouseover-then-click double-fire that touch browsers emit.
+document.addEventListener('pointerover',e=>{
+  if(e.pointerType!=='mouse')return;
+  const el=e.target.closest('[data-rule]');
+  if(!el)return;
+  const text=ruleText(el.dataset.rule);
+  if(text)showRulePopover(el,text);
+});
+document.addEventListener('pointerout',e=>{
+  if(e.pointerType!=='mouse')return;
+  if(e.target.closest('[data-rule]'))hideRulePopover();
+});
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-rule]');
+  if(!el){hideRulePopover();return;}
+  const text=ruleText(el.dataset.rule);
+  if(!text)return;
+  if(_rulePopoverFor===el)hideRulePopover();
+  else showRulePopover(el,text);
+  e.stopPropagation();
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// UNIT CARD
+// ══════════════════════════════════════════════════════════════════════════════
+function renderUC(u){
+  const p=u.profile,wps=getAllWpn(u).filter(w=>w&&w.s);
+  let h=`<div class="uc"><div class="uh"><span class="un">${u.name}</span><span class="badge bp">${u.points}pts</span>`;
+  if(u.role){const isL=u.role.toLowerCase().includes('leader')||u.role.toLowerCase().includes('support');h+=`<span class="badge ${isL?'bl':'bb'}">${u.role}</span>`;}
+  if(u.section==='battleline')h+=`<span class="badge bbl">Battleline</span>`;
+  if(u.section==='character') h+=`<span class="badge bch">Character</span>`;
+  if(u.section==='transport') h+=`<span class="badge bp">Transport</span>`;
+  if(u.isWarlord)h+=`<span class="badge bw">&#9733; Warlord</span>`;
+  if(u.leadsUnit)h+=`<span class="badge" style="background:rgba(184,134,11,.15);color:#fde68a">&#8594; ${u.leadsUnit.split(' ').slice(0,2).join(' ')}</span>`;
+  if(u.leadedBy) h+=`<span class="badge" style="background:rgba(124,58,237,.15);color:#a78bfa">led by ${u.leadedBy.split(' ')[0]}</span>`;
+  h+=`</div><div class="prow"><span>W ${p.w}</span><span>Sv ${p.sv}+</span>`;
+  if(p.inv)h+=`<span>Inv ${p.inv}+</span>`;
+  h+=`<span>M ${p.m}"</span><span>T ${p.T}</span>`;
+  if(p.fnp)h+=`<span>FNP ${p.fnp}+</span>`;
+  if(p.sp&&p.sp.length)h+=`<span style="color:#f87171;font-weight:600">&#9889; ${p.sp.map(s=>s.replace(/_/g,' ')).join(', ')}</span>`;
+  h+=`</div>`;
+  if(p.kw&&p.kw.length){h+=`<div class="kw-list">`;for(const k of p.kw){const notable=NOTABLE_KW.some(n=>k.toUpperCase().replace(/ /g,'_').includes(n.replace(/ /g,'_')));h+=`<span class="kw-tag${notable?' notable':''}" data-rule="${k}">${k}</span>`;}h+=`</div>`;}
+  if(p.ab&&p.ab.length){h+=`<div class="ab-list">`;for(const ab of p.ab)h+=`<div class="ab-item"><span class="ab-name">${ab.n}</span> <span class="ab-desc">&#8212; ${ab.d}</span></div>`;h+=`</div>`;}
+  if(u.leaderAbilities&&u.leaderAbilities.length)for(const ab of u.leaderAbilities)h+=`<div class="leader-bonus"><div class="lbt">&#11088; ${ab.name} <span style="font-weight:400;color:var(--text3)">&#8212; from ${u.leadedBy||'leader'}</span></div><div class="lbd">${ab.desc}</div></div>`;
+  if(wps.length){
+    h+=`<div class="wgrid">`;
+    for(const w of wps){
+      const extraKw=[...(w.kw||[])];
+      if((u.leaderAbilities||[]).some(ab=>ab.effect.lethalHits_all)&&!extraKw.includes('LETHAL_HITS'))extraKw.push('LETHAL_HITS');
+      h+=`<div class="wi"><div class="wn">${w.name}${w.qty>1?` x${w.qty}`:''}</div><div class="ws">`;
+      h+=`<span class="wst">A<span>${(+w.a).toFixed(w.a%1?1:0)}</span></span>`;
+      h+=`<span class="wst">BS/WS<span>${w.sk}+</span></span><span class="wst">S<span>${w.s}</span></span><span class="wst">AP<span>${w.ap}</span></span><span class="wst">D<span>${(+w.d).toFixed(w.d%1?1:0)}</span></span>`;
+      h+=`</div><div class="kw-row">${extraKw.map(kwB).join('')}</div></div>`;
+    }
+    h+=`</div>`;
+  }
+  if(u.figures&&u.figures.length>1)h+=`<div style="margin-top:6px;font-size:10px;color:var(--text3)">${u.figures.map(f=>`${f.qty}x ${f.name}`).join(' &middot; ')}</div>`;
+  h+=`</div>`;return h;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// UNITS TAB
+// ══════════════════════════════════════════════════════════════════════════════
+function buildUnits(){
+  const secs=[{k:'attached',l:'Attached Units'},{k:'character',l:'Characters'},{k:'battleline',l:'Battleline'},{k:'transport',l:'Dedicated Transports'},{k:'other',l:'Other Datasheets'}];
+  const det=(R.detachment||'').split('(')[0].trim(),d=R.detachmentObj;
+  let h=`<div class="sgrid"><div class="sc"><div class="l">Faction</div><div class="v" style="font-size:14px;color:var(--red)">${R.subfaction||R.faction}</div><div class="s">${R.faction}</div></div><div class="sc"><div class="l">Points used</div><div class="v">${R.units.reduce((s,u)=>s+u.points,0)}</div><div class="s">of ${R.points||'?'}</div></div><div class="sc"><div class="l">Units</div><div class="v">${R.units.length}</div></div><div class="sc"><div class="l">Detachment</div><div class="v" style="font-size:11px">${det}</div></div></div>`;
+  if(d){const disp=DISPOSITIONS[d.disp];h+=`<div class="det-banner"><div class="det-name">&#9876; ${d.name}</div><div class="det-meta"><span class="dp-pill">${d.dp} DP</span><span class="disp-pill ${dispCls(d.disp)}">${disp.label}</span></div><div class="det-rule">${d.rule}</div><div class="det-desc">${d.desc}</div></div>`;}
+  h+=`<hr class="divider">`;
+  for(const sec of secs){const su=R.units.filter(u=>u.section===sec.k);if(!su.length)continue;h+=`<div class="sl">${sec.l}</div>`;
+    if(sec.k==='attached'){const gs=[...new Set(su.map(u=>u.ag))];for(const g of gs){const gU=su.filter(u=>u.ag===g);const ldr=gU.find(u=>u.role&&(u.role.toLowerCase().includes('leader')||u.role.toLowerCase().includes('support')));const bdy=gU.find(u=>u.role&&u.role.toLowerCase().includes('bodyguard'));h+=`<div class="ag"><div class="ag-header"><span class="ag-title">${g}</span>`;if(ldr)h+=`<span class="badge bl">${ldr.name}</span>`;if(bdy)h+=`<span style="color:var(--text3)">&#8594;</span><span class="badge bb">${bdy.name}</span>`;h+=`</div>`;gU.forEach(u=>h+=renderUC(u));h+=`</div>`;}}
+    else su.forEach(u=>h+=renderUC(u));
+  }
+  document.getElementById('units-c').innerHTML=h;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DETACHMENTS TAB
+// ══════════════════════════════════════════════════════════════════════════════
+function buildDetachmentsTab(){
+  const activeName=R?.detachmentObj?.name||null;
+  const g3=[],g2=[],g1=[];
+  for(const d of Object.values(DETACHMENT_DB)){if(d.dp===3)g3.push(d);else if(d.dp===2)g2.push(d);else g1.push(d);}
+  let h=`<p style="font-size:12px;color:var(--text3);margin-bottom:1rem">All Space Marines + Blood Angels + Orks detachments for 11th edition. Max 3 DP per 2000pts.</p>`;
+  h+=`<div class="section-header">Force Dispositions</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:1.5rem">`;
+  for(const d of Object.values(DISPOSITIONS))h+=`<div style="background:var(--bg3);border-radius:var(--radius);padding:10px 12px"><div style="margin-bottom:4px"><span class="disp-pill ${dispCls(d.id)}">${d.label}</span></div><div style="font-size:10px;color:var(--text3);line-height:1.4">${d.desc}</div></div>`;
+  h+=`</div>`;
+  for(const [dp,group] of [[3,g3],[2,g2],[1,g1]]){if(!group.length)continue;h+=`<div class="section-header">${dp} Detachment Point${dp>1?'s':''}</div><div class="det-grid">`;for(const d of group){const disp=DISPOSITIONS[d.disp];const isA=(d.name===activeName);h+=`<div class="det-card${isA?' active-det':''}"><div class="det-card-name">${isA?'&#9733; ':''} ${d.name}</div><div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span class="dp-pill">${d.dp} DP</span><span class="disp-pill ${dispCls(d.disp)}">${disp.label}</span></div><div class="det-card-rule">${d.rule}</div><div class="det-card-desc">${d.desc}</div></div>`;}h+=`</div>`;}
+  const mx={TH:['Battlefield Dominance','Immovable Object','Determined Acquisition','Purge and Secure','Inescapable Dominion'],PF:['Unstoppable Force','Meatgrinder','Punishment','Consecrate',"Destroyer's Wrath"],DI:['Death Trap','Delaying Action','Outmanoeuvre','Smoke and Mirrors','Locate and Deny'],RE:['Reconnaissance Sweep','Triangulation','Surveil the Foe','Gather Intel','Search and Scour'],PA:['Secure Asset','Vital Link','Extract Relic','Vanguard Operation','Sabotage']};
+  h+=`<div class="section-header">Mission Matrix</div><div style="overflow-x:auto"><table><tr><th>You \\ Opp</th><th><span class="disp-pill disp-th">TH</span></th><th><span class="disp-pill disp-pf">PF</span></th><th><span class="disp-pill disp-di">DI</span></th><th><span class="disp-pill disp-re">RE</span></th><th><span class="disp-pill disp-pa">PA</span></th></tr>`;
+  for(const row of['TH','PF','DI','RE','PA']){const disp=DISPOSITIONS[row];h+=`<tr><td><span class="disp-pill ${dispCls(row)}">${disp.label}</span></td>`;for(const m of mx[row])h+=`<td style="color:var(--text2)">${m}</td>`;h+=`</tr>`;}
+  h+=`</table></div>`;
+  document.getElementById('det-c').innerHTML=h;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STATS TAB — with scoring /100
+// ══════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+// DAMAGE RANGE — min / expected / max for a weapon vs a target profile
+// min  = all dice at worst (1 hit, 1 wound, min damage roll)
+// max  = all dice at best  (all hit, all wound, max damage roll)
+// exp  = expected value (calcDmg)
+// ══════════════════════════════════════════════════════════════════════════════
+function calcDmgRange(weapons, def, mod){
+  let minRng=0, maxRng=0, expRng=0;
+  for(const w of weapons){
+    if(!w||!w.s) continue;
+    const kw=w.kw||[], qty=w.qty||1, isMelee=(w.t==='cc'||w.t==='cq');
+    const effS   = w.s + (isMelee?(mod.extraS_melee||0):0);
+    const effSv  = def.inv ? Math.min(def.sv, def.inv) : def.sv;
+    const saveAP = Math.min(6, Math.max(2, effSv - w.ap));
+    const attacks= (typeof w.a==='number'?w.a:3.5)*qty + (isMelee&&mod.extraA_melee?mod.extraA_melee*qty:0);
+    const blastBonus = (kw.includes('BLAST')||kw.includes('CLEAVE_1')) ? Math.floor(10/5) : 0; // assume 10 models for max
+    // Damage value — handle dice notation
+    let dMin=1, dMax=w.d, dExp=w.d;
+    if(kw.includes('MELTA_2')){dMax+=2; dExp+=1;} // assume within range for max
+
+    // MIN: 1 attack hits, 1 wounds, save fails, min damage
+    const woundMin = woundTgt(effS, def.T);
+    const saveFailMin = saveAP <= 6 ? 1/6 : 0;
+    // Just 1 model's weapon, worst case: 1 hit, 1 wound, save fails, min dmg
+    minRng += (saveAP <= 6 ? dMin : 0);
+
+    // MAX: all attacks hit (no miss), all wound (or auto-wound on 6), save always fails, max dmg
+    const maxAttacks = attacks + blastBonus;
+    maxRng += maxAttacks * dMax;
+
+    // EXPECTED (reuse calcDmg for accuracy)
+    expRng += calcDmg([w], def, {inCover:false, fnp:null, twin:false, melta:true, defMod:5}, mod);
+  }
+  return {min:+minRng.toFixed(1), exp:+expRng.toFixed(2), max:+maxRng.toFixed(1)};
+}
+
+function buildStats(){
+  const us=R.units;
+  const totW=us.reduce((s,u)=>s+u.profile.w*getModels(u),0);
+  const totPts=us.reduce((s,u)=>s+u.points,0);
+  const totMod=us.reduce((s,u)=>s+getModels(u),0);
+  const avgSv=(us.reduce((s,u)=>s+u.profile.sv,0)/us.length).toFixed(1);
+  const wtdMove=us.reduce((s,u)=>s+u.profile.m*getModels(u),0)/Math.max(1,totMod);
+
+  const stdDef={w:2,sv:4,inv:null,T:4,fnp:null};
+  const stdCtx={onCharge:true,belowHalf:false,belowStarting:false,isDeathCompany:false,hasJumpPack:false,entrenched:false,waaagh:false,bigMob:false};
+
+  const dmgData=us.map(u=>{
+    const mod=resolveModifiers(u,R.detachmentObj,{...stdCtx,isDeathCompany:(u.profile.tags||[]).includes('DEATH_COMPANY'),hasJumpPack:(u.profile.tags||[]).includes('JUMP_PACK')});
+    return+calcDmg(getAllWpn(u).filter(w=>w&&w.s),stdDef,{inCover:false,fnp:null,twin:false,melta:false,defMod:5},mod).toFixed(2);
+  });
+  const totalDmg=dmgData.reduce((s,v)=>s+v,0);
+
+  // Compute army-wide min/max damage range
+  const stdDefStat={w:2,sv:4,inv:null,T:4,fnp:null};
+  const allRangedWpns = us.flatMap(u=>getAllWpn(u).filter(w=>w&&w.s&&(w.t==='rng'||w.t==='cq')));
+  const allMeleeWpns  = us.flatMap(u=>getAllWpn(u).filter(w=>w&&w.s&&(w.t==='cc'||w.t==='cq')));
+  const armyMod = us.length ? resolveModifiers(us[0],R.detachmentObj,stdCtx) : {};
+  const rangedRange = allRangedWpns.length ? calcDmgRange(allRangedWpns,stdDefStat,armyMod) : {min:0,exp:0,max:0};
+  const meleeRange  = allMeleeWpns.length  ? calcDmgRange(allMeleeWpns, stdDefStat,armyMod) : {min:0,exp:0,max:0};
+  const armyTotalMin = +(rangedRange.min + meleeRange.min).toFixed(1);
+  const armyTotalMax = +(rangedRange.max + meleeRange.max).toFixed(1);
+  const armyTotalExp = +(rangedRange.exp + meleeRange.exp).toFixed(1);
+  const wData=us.map(u=>u.profile.w*getModels(u));
+  const labels=us.map(u=>u.name.length>22?u.name.slice(0,20)+'...':u.name);
+
+  // Scoring
+  const mobilityScore=Math.min(10,+(wtdMove/2).toFixed(1));
+  const saveEff=us.reduce((s,u)=>{const svE=(7-u.profile.sv)/6+(u.profile.inv?((7-u.profile.inv)/6)*0.3:0);return s+svE*u.profile.w*getModels(u);},0);
+  const durabScore=Math.min(10,+(saveEff/totPts*80).toFixed(1));
+  const massScore=Math.min(10,+(totMod/3).toFixed(1));
+  const firepowerScore=Math.min(10,+(totalDmg/4).toFixed(1));
+  const meleeWpn=us.reduce((s,u)=>s+getAllWpn(u).filter(w=>w&&w.s&&w.t==='cc').length,0);
+  const rangedWpn=us.reduce((s,u)=>s+getAllWpn(u).filter(w=>w&&w.s&&(w.t==='rng'||w.t==='cq')).length,0);
+  const meleeRatio=meleeWpn/Math.max(1,meleeWpn+rangedWpn);
+  const profileLabel=meleeRatio>0.65?'Melee-heavy':meleeRatio>0.45?'Mixed':meleeRatio>0.25?'Ranged-leaning':'Ranged-heavy';
+  const avgDmg=totalDmg/Math.max(1,us.length);
+  const variance=dmgData.reduce((s,v)=>s+Math.pow(v-avgDmg,2),0)/Math.max(1,us.length);
+  const consistencyScore=Math.min(10,+(10-Math.min(10,Math.sqrt(variance)/Math.max(0.1,avgDmg)*5)).toFixed(1));
+  const notableCount=us.reduce((s,u)=>{return s+((u.profile.sp||[]).filter(k=>['FIGHTS_FIRST','LETHAL_HITS','DEVASTATING_WOUNDS','TWIN_LINKED','BLAST','INFILTRATE','STEALTH','DEEP STRIKE'].some(n=>k.includes(n))).length);},0);
+  const specialScore=Math.min(10,+(notableCount*1.5).toFixed(1));
+  const globalScore=Math.round(firepowerScore*2.5+durabScore*2.0+mobilityScore*1.5+massScore*1.0+consistencyScore*1.5+specialScore*1.5);
+
+  function scoreBar(val,color){const pct=Math.round(val/10*100);return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div style="flex:1;height:8px;background:var(--bg3);border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${color};border-radius:4px;transition:width .5s"></div></div><span style="min-width:28px;font-size:11px;font-weight:700;color:${color}">${val}</span></div>`;}
+
+  const invU=us.filter(u=>u.profile.inv),ffU=us.filter(u=>(u.profile.sp||[]).includes('FIGHTS_FIRST'));
+  const devU=us.filter(u=>getAllWpn(u).some(w=>w&&(w.kw||[]).includes('DEVASTATING_WOUNDS')));
+  const hazU=us.filter(u=>getAllWpn(u).some(w=>w&&(w.kw||[]).includes('HAZARDOUS')));
+  const blstU=us.filter(u=>getAllWpn(u).some(w=>w&&(w.kw||[]).includes('BLAST')));
+  const twnU=us.filter(u=>getAllWpn(u).some(w=>w&&(w.kw||[]).includes('TWIN_LINKED')));
+
+  let h=`<div style="background:var(--bg2);border:1px solid rgba(192,57,43,.5);border-radius:var(--radius);padding:1rem;margin-bottom:1.2rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Army Score</div>
+        <div style="font-size:42px;font-weight:700;color:var(--red);line-height:1">${globalScore}<span style="font-size:18px;color:var(--text3)">/100</span></div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px">${R.subfaction||R.faction} &middot; ${(R.detachment||'').split('(')[0].trim()}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Combat profile</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text)">${profileLabel}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${Math.round(meleeRatio*100)}% melee / ${Math.round((1-meleeRatio)*100)}% ranged</div>
+      </div>
+    </div>
+    <div class="army-score-grid">
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px">Firepower <span style="color:var(--text2)">${firepowerScore}/10</span></div>${scoreBar(firepowerScore,'#c0392b')}
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px;margin-top:8px">Durability <span style="color:var(--text2)">${durabScore}/10</span></div>${scoreBar(durabScore,'#7c3aed')}
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px;margin-top:8px">Mobility <span style="color:var(--text2)">${mobilityScore}/10</span></div>${scoreBar(mobilityScore,'#2563eb')}
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px">Model mass <span style="color:var(--text2)">${massScore}/10</span></div>${scoreBar(massScore,'#16a34a')}
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px;margin-top:8px">Consistency <span style="color:var(--text2)">${consistencyScore}/10</span></div>${scoreBar(consistencyScore,'#d97706')}
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px;margin-top:8px">Special rules <span style="color:var(--text2)">${specialScore}/10</span></div>${scoreBar(specialScore,'#db2777')}
+      </div>
+      <div class="army-radar-box"><canvas id="chartRadar"></canvas></div>
+    </div>
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">
+        <span style="font-size:10px;color:var(--text3)">Army damage range (ranged + melee vs T4 Sv4+)</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:11px;color:#60a5fa;font-weight:700;min-width:32px">${armyTotalMin}</span>
+        <div style="flex:1;height:10px;background:var(--bg3);border-radius:5px;overflow:hidden;position:relative">
+          <div style="position:absolute;left:0;top:0;height:100%;width:100%;background:linear-gradient(to right,#60a5fa,#c0392b,#4ade80);border-radius:5px;opacity:.6"></div>
+          <div style="position:absolute;top:0;height:100%;background:var(--red);border-radius:3px;width:3px;left:${armyTotalMax>0?Math.round(armyTotalExp/armyTotalMax*100):50}%"></div>
+        </div>
+        <span style="font-size:11px;color:#4ade80;font-weight:700;min-width:32px;text-align:right">${armyTotalMax}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:3px">
+        <span>Minimum</span><span style="color:var(--red)">Expected: ${armyTotalExp}</span><span>Maximum</span>
+      </div>
+    </div>
+    <div style="margin-top:8px;font-size:10px;color:var(--text3)">
+      Score = Firepower &times;2.5 + Durability &times;2.0 + Mobility &times;1.5 + Consistency &times;1.5 + Special &times;1.5 + Mass &times;1.0
+    </div>
+  </div>
+  <div class="sgrid">
+    <div class="sc"><div class="l">Total Wounds</div><div class="v" style="color:var(--red)">${totW}</div><div class="s">${totMod} models</div></div>
+    <div class="sc"><div class="l">Avg. Save</div><div class="v">${avgSv}+</div></div>
+    <div class="sc"><div class="l">Avg. Move (wtd)</div><div class="v">${wtdMove.toFixed(1)}"</div></div>
+    <div class="sc"><div class="l">Total exp. damage</div><div class="v">${armyTotalExp}</div><div class="s">vs T4 Sv4+ 5 models</div></div>
+    <div class="sc">
+      <div class="l">Damage range</div>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-top:2px">
+        <span style="color:#60a5fa;font-weight:700;font-size:16px">${armyTotalMin}</span>
+        <span style="color:var(--text3);font-size:11px">&#8594;</span>
+        <span style="color:#4ade80;font-weight:700;font-size:16px">${armyTotalMax}</span>
+      </div>
+      <div class="s">min &rarr; max (all phases)</div>
+    </div>
+    <div class="sc"><div class="l">pts / Wound</div><div class="v">${(totPts/totW).toFixed(1)}</div></div>
+    <div class="sc"><div class="l">Combat profile</div><div class="v" style="font-size:13px">${profileLabel}</div></div>
+  </div>
+  <div class="sgrid">
+    <div class="sc"><div class="l">Invulnerable</div><div class="v">${invU.length}</div><div class="s">${invU.map(u=>u.name.split(' ')[0]).join(', ')||'--'}</div></div>
+    <div class="sc"><div class="l">Fights First</div><div class="v">${ffU.length}</div><div class="s">${ffU.map(u=>u.name.split(' ')[0]).join(', ')||'--'}</div></div>
+    <div class="sc"><div class="l">Devastating</div><div class="v">${devU.length}</div></div>
+    <div class="sc"><div class="l">Hazardous</div><div class="v">${hazU.length}</div></div>
+    <div class="sc"><div class="l">Blast</div><div class="v">${blstU.length}</div></div>
+    <div class="sc"><div class="l">Twin-Linked</div><div class="v">${twnU.length}</div></div>
+  </div>`;
+  if(R.detachmentObj){const d=R.detachmentObj,disp=DISPOSITIONS[d.disp];h+=`<div class="det-banner"><div class="det-name">&#9876; ${d.name}</div><div class="det-meta"><span class="dp-pill">${d.dp} DP</span><span class="disp-pill ${dispCls(d.disp)}">${disp.label}</span></div><div class="det-desc">${d.desc}</div></div>`;}
+  h+=`<p style="font-size:11px;color:var(--text3);margin-bottom:10px">Expected damage per unit vs T4 Sv4+ 5-model target &mdash; with leader bonuses + detachment (on charge)</p><div style="position:relative;height:${us.length*40+80}px"><canvas id="chartSt"></canvas></div><hr class="divider">`;
+  // ── Damage efficiency (damage per 100pts) ────────────────────────────────────
+  const effPairs=us.map((u,i)=>({name:u.name.length>22?u.name.slice(0,20)+'...':u.name,val:u.points>0?+(dmgData[i]/u.points*100).toFixed(2):0}))
+    .sort((a,b)=>b.val-a.val);
+  const effLabels=effPairs.map(p=>p.name),effData=effPairs.map(p=>p.val);
+  h+=`<p style="font-size:11px;color:var(--text3);margin-bottom:10px">Damage efficiency (expected damage per 100pts spent) &mdash; higher is more points-efficient</p><div style="position:relative;height:${us.length*40+80}px"><canvas id="chartEff"></canvas></div><hr class="divider">`;
+  // ── Damage range table ──────────────────────────────────────────────────────
+  const stdDefMelee = {w:2,sv:4,inv:null,T:4,fnp:null};
+  const stdDefRanged= {w:2,sv:4,inv:null,T:4,fnp:null};
+  h+=`<div class="section-header" style="margin-top:1.5rem">Damage range per unit vs T4 Sv4+ — one combat phase</div>
+  <div style="overflow-x:auto;margin-bottom:1.5rem">
+  <table style="border-collapse:collapse;width:100%;font-size:11px">
+    <tr>
+      <th style="background:var(--bg3);padding:6px 10px;border:1px solid var(--border);text-align:left">Unit</th>
+      <th style="background:var(--bg3);padding:6px 10px;border:1px solid var(--border);text-align:center;color:#60a5fa">Ranged Min</th>
+      <th style="background:var(--bg3);padding:6px 10px;border:1px solid var(--border);text-align:center;color:#c0392b">Ranged Exp.</th>
+      <th style="background:var(--bg3);padding:6px 10px;border:1px solid var(--border);text-align:center;color:#4ade80">Ranged Max</th>
+      <th style="background:var(--bg3);padding:6px 10px;border:1px solid var(--border);text-align:center;color:#60a5fa">Melee Min</th>
+      <th style="background:var(--bg3);padding:6px 10px;border:1px solid var(--border);text-align:center;color:#c0392b">Melee Exp.</th>
+      <th style="background:var(--bg3);padding:6px 10px;border:1px solid var(--border);text-align:center;color:#4ade80">Melee Max</th>
+    </tr>`;
+  for(const u of us){
+    const uMod = resolveModifiers(u,R.detachmentObj,{...stdCtx,isDeathCompany:(u.profile.tags||[]).includes('DEATH_COMPANY'),hasJumpPack:(u.profile.tags||[]).includes('JUMP_PACK')});
+    const wpns = getAllWpn(u).filter(w=>w&&w.s);
+    const rWpns = wpns.filter(w=>w.t==='rng'||w.t==='cq');
+    const mWpns = wpns.filter(w=>w.t==='cc'||w.t==='cq');
+    const rRange = rWpns.length ? calcDmgRange(rWpns, stdDefRanged, uMod) : null;
+    const mRange = mWpns.length ? calcDmgRange(mWpns, stdDefMelee,  uMod) : null;
+    const fmt = (r,key,color)=>r?`<span style="color:${color};font-weight:600">${r[key]}</span>`:'<span style="color:var(--text3)">—</span>';
+    h+=`<tr>
+      <td style="padding:5px 10px;border:1px solid var(--border);font-weight:500">${u.name}</td>
+      <td style="padding:5px 10px;border:1px solid var(--border);text-align:center">${fmt(rRange,'min','#60a5fa')}</td>
+      <td style="padding:5px 10px;border:1px solid var(--border);text-align:center">${fmt(rRange,'exp','#c0392b')}</td>
+      <td style="padding:5px 10px;border:1px solid var(--border);text-align:center">${fmt(rRange,'max','#4ade80')}</td>
+      <td style="padding:5px 10px;border:1px solid var(--border);text-align:center">${fmt(mRange,'min','#60a5fa')}</td>
+      <td style="padding:5px 10px;border:1px solid var(--border);text-align:center">${fmt(mRange,'exp','#c0392b')}</td>
+      <td style="padding:5px 10px;border:1px solid var(--border);text-align:center">${fmt(mRange,'max','#4ade80')}</td>
+    </tr>`;
+  }
+  // Totals row
+  const allWpnsR = us.flatMap(u=>getAllWpn(u).filter(w=>w&&w.s&&(w.t==='rng'||w.t==='cq')));
+  const allWpnsM = us.flatMap(u=>getAllWpn(u).filter(w=>w&&w.s&&(w.t==='cc'||w.t==='cq')));
+  const allModR  = resolveModifiers(us[0],R.detachmentObj,stdCtx);
+  const totR = allWpnsR.length ? calcDmgRange(allWpnsR, stdDefRanged, allModR) : null;
+  const totM = allWpnsM.length ? calcDmgRange(allWpnsM, stdDefMelee,  allModR) : null;
+  h+=`<tr style="background:rgba(192,57,43,.06)">
+    <td style="padding:5px 10px;border:1px solid var(--border);font-weight:700;color:var(--text)">TOTAL ARMY</td>
+    <td style="padding:5px 10px;border:1px solid var(--border);text-align:center;font-weight:700;color:#60a5fa">${totR?totR.min:'—'}</td>
+    <td style="padding:5px 10px;border:1px solid var(--border);text-align:center;font-weight:700;color:#c0392b">${totR?totR.exp:'—'}</td>
+    <td style="padding:5px 10px;border:1px solid var(--border);text-align:center;font-weight:700;color:#4ade80">${totR?totR.max:'—'}</td>
+    <td style="padding:5px 10px;border:1px solid var(--border);text-align:center;font-weight:700;color:#60a5fa">${totM?totM.min:'—'}</td>
+    <td style="padding:5px 10px;border:1px solid var(--border);text-align:center;font-weight:700;color:#c0392b">${totM?totM.exp:'—'}</td>
+    <td style="padding:5px 10px;border:1px solid var(--border);text-align:center;font-weight:700;color:#4ade80">${totM?totM.max:'—'}</td>
+  </tr>
+  </table>
+  <p style="font-size:10px;color:var(--text3);margin-top:4px">Min = 1 hit, 1 wound, save fails, minimum damage dice &middot; Max = all attacks hit &amp; wound, save fails, maximum damage dice (10 models for Blast) &middot; Melta assumed in range</p>
+  </div>`;
+  h+=`<div class="rb"><h4>11th Edition Rules Reference</h4><div class="rr"><span class="rl">FIGHTS FIRST</span><span class="rv">Strikes before units without this keyword</span></div><div class="rr"><span class="rl">DEVASTATING WOUNDS</span><span class="rv">Critical wound &rarr; mortal wounds</span></div><div class="rr"><span class="rl">LETHAL HITS</span><span class="rv">Hit 6 &rarr; automatic wound</span></div><div class="rr"><span class="rl">TWIN-LINKED</span><span class="rv">Re-roll all failed wounds</span></div><div class="rr"><span class="rl">BLAST</span><span class="rv">+1A per 5 models in target</span></div><div class="rr"><span class="rl">SUSTAINED HITS 1</span><span class="rv">Hit 6 &rarr; +1 hit</span></div><div class="rr"><span class="rl">HAZARDOUS</span><span class="rv">Roll 1-2 &rarr; 1 mortal wound on firer</span></div><div class="rr"><span class="rl">MELTA X</span><span class="rv">+X damage at half range</span></div><div class="rr"><span class="rl">COVER (11th)</span><span class="rv">-1 to hit on ranged</span></div><div class="rr"><span class="rl">INVULNERABLE SAVE</span><span class="rv">Mandatory &mdash; cannot be bypassed by AP</span></div></div>`;
+  document.getElementById('stats-c').innerHTML=h;
+  _statsChartData={labels,dmgData,wData,effLabels,effData,scores:[firepowerScore,durabScore,mobilityScore,massScore,consistencyScore,specialScore]};
+  renderStatsCharts();
+}
+
+// Chart creation is separated from buildStats() because a canvas inside a hidden
+// (display:none) tab measures 0x0 — Chart.js can't size it correctly at creation time,
+// and a plain .resize() later isn't reliable. So charts are (re)created from cached
+// data every time the Statistics tab actually becomes visible (see showTab()).
+let _statsChartData=null;
+function renderStatsCharts(){
+  if(!_statsChartData||!document.getElementById('chartSt'))return;
+  const{labels,dmgData,wData,effLabels,effData,scores}=_statsChartData;
+  if(chartSt)chartSt.destroy();
+  chartSt=new Chart(document.getElementById('chartSt'),{type:'bar',data:{labels,datasets:[{label:'Exp. damage',data:dmgData,backgroundColor:'#c0392b',borderRadius:3},{label:'Total wounds',data:wData,backgroundColor:'rgba(124,58,237,0.45)',borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#777',font:{size:11}}}},scales:{x:{ticks:{color:'#555'},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#999',font:{size:10}}}}}});
+  if(chartRadar)chartRadar.destroy();
+  chartRadar=new Chart(document.getElementById('chartRadar'),{type:'radar',data:{labels:['Firepower','Durability','Mobility','Mass','Consist.','Special'],datasets:[{data:scores,backgroundColor:'rgba(192,57,43,.25)',borderColor:'#c0392b',pointBackgroundColor:'#c0392b',pointRadius:2,borderWidth:1.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{r:{min:0,max:10,ticks:{display:false,stepSize:2},pointLabels:{color:'#999',font:{size:8}},grid:{color:'rgba(255,255,255,0.08)'},angleLines:{color:'rgba(255,255,255,0.08)'}}}}});
+  if(chartEff)chartEff.destroy();
+  chartEff=new Chart(document.getElementById('chartEff'),{type:'bar',data:{labels:effLabels,datasets:[{label:'Dmg / 100pts',data:effData,backgroundColor:'#d97706',borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#777',font:{size:11}}}},scales:{x:{ticks:{color:'#555'},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#999',font:{size:10}}}}}});
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// COMBAT ENGINE
+// ══════════════════════════════════════════════════════════════════════════════
+function woundTgt(aS,dT){if(aS>=dT*2)return 2;if(aS>dT)return 3;if(aS===dT)return 4;if(aS*2<=dT)return 6;return 5;}
+
+function calcDmg(weapons,def,opts,mod={}){
+  let total=0;
+  for(const w of weapons){
+    if(!w||!w.s)continue;
+    const kw=w.kw||[],qty=w.qty||1,isShooting=(w.t==='rng'||w.t==='cq'),isMelee=(w.t==='cc'||w.t==='cq');
+    const hitMod=(opts.inCover&&isShooting)?-1:0;
+    const hitTgt=Math.max(2,w.sk-hitMod);
+    let hitC=(7-hitTgt)/6;
+    if(kw.includes('SUSTAINED_HITS_1'))hitC+=(1/6)*(1/6);
+    if(mod.rerollHit1_all||(mod.rerollHit1_melee&&isMelee))hitC+=hitC/6;
+    let attacks=(typeof w.a==='number'?w.a:3.5)*qty;
+    if(isMelee&&mod.extraA_melee)attacks+=mod.extraA_melee*qty;
+    if(kw.includes('BLAST')||kw.includes('CLEAVE_1'))attacks+=Math.floor((opts.defMod||1)/5);
+    const hasLethal=kw.includes('LETHAL_HITS')||(mod.lethalHits_all)||(mod.lethalHits_melee&&isMelee);
+    const autoWound=hasLethal?(1/6)*hitC:0;
+    const normalHitC=Math.max(0,hitC-autoWound);
+    let effS=w.s+(isMelee?(mod.extraS_melee||0):0);
+    const wR=woundTgt(effS,def.T);
+    let wC=(7-wR)/6;
+    if(opts.twin||kw.includes('TWIN_LINKED'))wC=1-(1-wC)*(1-wC);
+    if(isMelee){if(mod.rerollAllWounds_melee)wC=1-(1-wC)*(1-wC);else if(mod.rerollWound1_melee)wC=wC+(1/6)*(1-wC);}
+    let effSv=Math.min(6,Math.max(2,def.sv-w.ap));
+    if(def.inv)effSv=Math.min(effSv,def.inv);
+    const saveFail=Math.max(0,(effSv-1))/6;
+    let dmg=w.d;if(kw.includes('MELTA_2')&&opts.melta)dmg+=2;
+    let expected=0;
+    if(kw.includes('DEVASTATING_WOUNDS')){const critWC=(1/6)*wC,normWC=wC*(5/6);expected=attacks*(autoWound*saveFail*dmg+normalHitC*(critWC*dmg+normWC*saveFail*dmg));}
+    else expected=attacks*hitC*wC*saveFail*dmg;
+    const fnpV=opts.fnp||(mod.fnp);if(fnpV)expected*=(1-(7-fnpV)/6);
+    total+=expected;
+  }
+  return total;
+}
+
+function binomP(n,k,p){if(k>n||k<0)return 0;let c=1;for(let i=0;i<k;i++)c=c*(n-i)/(i+1);return c*Math.pow(p,k)*Math.pow(1-p,n-k);}
+
+function probKill(atk,def,rounds,opts,mod){
+  const weapons=getAllWpn(atk).filter(w=>w&&w.s);let best=0;
+  for(const w of weapons){
+    const kw=w.kw||[],qty=w.qty||1,isShooting=(w.t==='rng'||w.t==='cq'),isMelee=(w.t==='cc'||w.t==='cq');
+    const hitMod=(opts.inCover&&isShooting)?-1:0;
+    let hitC=(7-Math.max(2,w.sk-hitMod))/6;
+    if(kw.includes('SUSTAINED_HITS_1'))hitC+=(1/6)*(1/6);
+    if(mod.rerollHit1_all||(mod.rerollHit1_melee&&isMelee))hitC+=hitC/6;
+    const hasLethal=kw.includes('LETHAL_HITS')||mod.lethalHits_all||(mod.lethalHits_melee&&isMelee);
+    const autoWound=hasLethal?(1/6)*hitC:0;
+    let effS=w.s+(isMelee?(mod.extraS_melee||0):0);
+    const wR=woundTgt(effS,def.profile.T);
+    let wC=(7-wR)/6;
+    if(opts.twin||kw.includes('TWIN_LINKED'))wC=1-(1-wC)*(1-wC);
+    if(isMelee){if(mod.rerollAllWounds_melee)wC=1-(1-wC)*(1-wC);else if(mod.rerollWound1_melee)wC=wC+(1/6)*(1-wC);}
+    let effSv=Math.min(6,Math.max(2,def.profile.sv-w.ap));
+    if(def.profile.inv)effSv=Math.min(effSv,def.profile.inv);
+    const saveFail=Math.max(0,(effSv-1))/6;
+    const pWound=hitC*wC*saveFail+autoWound*saveFail;
+    let attacks=(typeof w.a==='number'?w.a:3.5)*qty;
+    if(isMelee&&mod.extraA_melee)attacks+=mod.extraA_melee*qty;
+    if(kw.includes('BLAST')||kw.includes('CLEAVE_1'))attacks+=Math.floor((opts.defMod||1)/5);
+    let dmg=w.d;if(kw.includes('MELTA_2')&&opts.melta)dmg+=2;
+    const totalDice=Math.round(attacks*rounds);
+    const wNeeded=Math.ceil(def.profile.w/dmg);
+    let pKill=0;for(let k=wNeeded;k<=Math.min(totalDice,80);k++)pKill+=binomP(totalDice,k,pWound);
+    best=Math.max(best,Math.min(1,pKill));
+  }
+  return best;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SHARED SIM RUNNER (used by all target types)
+// ══════════════════════════════════════════════════════════════════════════════
+function runSimWithDef(def, leaderAbilitiesOverride){
+  const atkIdx=parseInt(document.getElementById('sel-atk').value);
+  const atk=R.units[atkIdx];
+  const inCover=document.getElementById('o-cov').checked;
+  const useFNP=document.getElementById('o-fnp').checked;
+  const useTwin=document.getElementById('o-twin').checked;
+  const useMelt=document.getElementById('o-melta').checked;
+  const onCharge=document.getElementById('o-charge').checked;
+  const belowStart=document.getElementById('o-below-start').checked;
+  const belowHalf=document.getElementById('o-below-half').checked;
+  const entrenched=document.getElementById('o-entrenched').checked;
+  // KEY FIX: always read defMod from the DOM
+  const defMod=parseInt(document.getElementById('c-mod').value)||getModels(def)||1;
+  const ctx={onCharge,belowHalf,belowStarting:belowStart,entrenched,waaagh:onCharge,
+    bigMob:defMod>=20,nearWalker:false,
+    isDeathCompany:(atk.profile.tags||[]).includes('DEATH_COMPANY'),
+    hasJumpPack:(atk.profile.tags||[]).includes('JUMP_PACK')};
+  // Use override if provided, else fall back to unit's parsed leader abilities
+  const atkForMod = leaderAbilitiesOverride!==undefined
+    ? {...atk, leaderAbilities: leaderAbilitiesOverride}
+    : atk;
+  const mod=resolveModifiers(atkForMod,R.detachmentObj,ctx);
+  const opts={inCover,fnp:useFNP?5:null,twin:useTwin,melta:useMelt,defMod};
+  const weapons=getAllWpn(atk).filter(w=>w&&w.s);
+  const expDmg=calcDmg(weapons,def.profile,opts,mod);
+  const rounds=expDmg>0?Math.ceil(def.profile.w/expDmg).toFixed(1):'inf';
+  const probR=[1,2,3,4,5].map(n=>probKill(atk,def,n,opts,mod));
+  const atkFF=(atk.profile.sp||[]).includes('FIGHTS_FIRST');
+  const defFF=(def.profile.sp||[]).includes('FIGHTS_FIRST');
+  const hasHaz=weapons.some(w=>(w.kw||[]).includes('HAZARDOUS'));
+  const hasDev=weapons.some(w=>(w.kw||[]).includes('DEVASTATING_WOUNDS'));
+  const hasLth=weapons.some(w=>(w.kw||[]).includes('LETHAL_HITS'))||mod.lethalHits_all||mod.lethalHits_melee;
+  const hasTwn=weapons.some(w=>(w.kw||[]).includes('TWIN_LINKED'))||useTwin;
+  const hasBlst=weapons.some(w=>(w.kw||[]).includes('BLAST'));
+  const hasClv=weapons.some(w=>(w.kw||[]).includes('CLEAVE_1'));
+  const cols=['#c0392b','#e74c3c','#e67e22','#f1c40f','#2ecc71'];
+  const d=R.detachmentObj;const disp=d?DISPOSITIONS[d.disp]:null;
+  let h=`<div class="card"><div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    <span style="font-size:14px;font-weight:700;color:var(--red)">${atk.name}</span>
+    <span style="color:var(--text3)">&#8594;</span>
+    <span style="font-size:14px;font-weight:700">${def.name}</span>
+    <span style="font-size:11px;color:var(--text3)">(${defMod} model${defMod>1?'s':''})</span>
+  </div>`;
+  if(mod.notes.length)h+=`<div class="info gold">&#11088; ${mod.notes.join(' &middot; ')}</div>`;
+  if(d&&disp)h+=`<div class="info" style="background:rgba(192,57,43,.08);color:var(--text2)">&#9876; ${d.name} <span class="disp-pill ${dispCls(d.disp)}" style="margin-left:4px">${disp.label}</span></div>`;
+  if(atkFF)h+=`<div class="info red">&#9889; FIGHTS FIRST on attacker</div>`;
+  if(defFF)h+=`<div class="info amber">&#9888; Target has FIGHTS FIRST too</div>`;
+  if(inCover)h+=`<div class="info green">Cover: -1 to hit ranged</div>`;
+  if(hasHaz)h+=`<div class="info amber">&#9888; HAZARDOUS: roll 1-2 = mortal wound back</div>`;
+  if(def.profile.kw&&def.profile.kw.length)h+=`<div style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:3px">${def.profile.kw.map(k=>`<span class="kw-tag" data-rule="${k}">${k}</span>`).join('')}</div>`;
+  if(def.profile.ab&&def.profile.ab.length)h+=`<div class="rb" style="margin-bottom:8px"><h4>Target abilities</h4>${def.profile.ab.map(ab=>`<div class="rr"><span class="rl">${ab.n}</span><span class="rv" style="font-size:10px;max-width:60%;text-align:right">${ab.d}</span></div>`).join('')}</div>`;
+  h+=`<div class="sgrid" style="margin-bottom:12px">
+    <div class="sc"><div class="l">Exp. damage / phase</div><div class="v" style="color:var(--red)">${expDmg.toFixed(2)}</div></div>
+    <div class="sc"><div class="l">Target wounds (each)</div><div class="v">${def.profile.w}</div></div>
+    <div class="sc"><div class="l">Avg. rounds to kill</div><div class="v">${rounds}</div></div>
+    <div class="sc"><div class="l">Effective save</div><div class="v">${def.profile.inv?Math.min(def.profile.sv,def.profile.inv)+'+ (inv)':def.profile.sv+'+'}</div></div>
+  </div>
+  <p style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text2)">Kill probability after N rounds</p>
+  <div style="position:relative;height:130px;margin-bottom:10px"><canvas id="chartSim"></canvas></div>`;
+  [1,2,3,4,5].forEach((n,i)=>{const pct=Math.round(probR[i]*100);h+=`<div class="pbr"><span style="min-width:54px;color:var(--text3)">Round ${n}</span><div class="pbb"><div class="pbf" style="width:${pct}%;background:${cols[i]}"></div></div><span class="pv" style="color:${cols[i]}">${pct}%</span></div>`;});
+  const wpnRes=weapons.map(w=>({w,dmg:calcDmg([w],def.profile,opts,mod)})).sort((a,b)=>b.dmg-a.dmg);
+  const bestDmg=wpnRes[0]?.dmg||0;
+  h+=`<hr class="divider"><p style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text2)">Damage by weapon</p><div class="wpn-detail-grid">`;
+  for(const{w,dmg}of wpnRes){
+    const isBest=(dmg===bestDmg&&bestDmg>0),isMelee=(w.t==='cc'||w.t==='cq');
+    const effS=w.s+(isMelee?(mod.extraS_melee||0):0);
+    const totalA=(typeof w.a==='number'?w.a:3.5)*w.qty+(isMelee&&mod.extraA_melee?mod.extraA_melee*w.qty:0);
+    const wR=woundTgt(effS,def.profile.T);
+    const effSv=def.profile.inv?Math.min(6,Math.max(2,def.profile.sv-w.ap),def.profile.inv):Math.min(6,Math.max(2,def.profile.sv-w.ap));
+    const extraKw=[...(w.kw||[])];
+    if((mod.lethalHits_all||(mod.lethalHits_melee&&isMelee))&&!extraKw.includes('LETHAL_HITS'))extraKw.push('LETHAL_HITS');
+    h+=`<div class="wpn-detail-card${isBest?' best':''}">
+      <div class="wpn-detail-name">${w.name}${w.qty>1?` x${w.qty}`:''}${isBest?' *':''}</div>
+      <div class="wpn-detail-dmg">${dmg.toFixed(2)}</div>
+      <div class="wpn-detail-sub">
+        A${totalA.toFixed(totalA%1?1:0)}${mod.extraA_melee&&isMelee?`<span class="bonus-tag">+${mod.extraA_melee*w.qty}</span>`:''}
+        S${effS}${mod.extraS_melee&&isMelee?`<span class="bonus-tag">+${mod.extraS_melee}</span>`:''}
+        AP${w.ap} D${(+w.d).toFixed(w.d%1?1:0)} | wounds ${wR}+ | sv ${effSv}+
+        ${(hasBlst||hasClv)?`<span style="color:var(--text3)">+${Math.floor(defMod/5)}A Blast (${defMod} models)</span>`:''}
+      </div>
+      <div class="kw-row">${extraKw.map(kwB).join('')}</div>
+    </div>`;
+  }
+  h+=`</div><hr class="divider"><div class="rb"><h4>Rules applied</h4>
+    <div class="rr"><span class="rl">Detachment</span><span class="rv">${d?`${d.name} (${d.dp}DP)`:'--'}</span></div>
+    <div class="rr"><span class="rl">Force Disposition</span><span class="rv">${disp?disp.label:'--'}</span></div>
+    <div class="rr"><span class="rl">On Charge / Waaagh!</span><span class="rv">${onCharge?'Yes':'No'}</span></div>
+    <div class="rr"><span class="rl">Models in target</span><span class="rv">${defMod}</span></div>
+    <div class="rr"><span class="rl">Leader bonus</span><span class="rv">${mod.notes.filter(n=>d?!n.startsWith(d.rule):true).join('; ')||'--'}</span></div>
+    <div class="rr"><span class="rl">Detachment bonus</span><span class="rv">${[mod.extraA_melee?`+${mod.extraA_melee}A`:null,mod.extraS_melee?`+${mod.extraS_melee}S`:null,mod.rerollWound1_melee?'re-roll wound 1s':null,mod.rerollAllWounds_melee?'re-roll all wounds':null].filter(Boolean).join(', ')||'--'}</span></div>
+    <div class="rr"><span class="rl">Cover / Inv / FNP</span><span class="rv">${[inCover?'Cover -1':null,def.profile.inv?def.profile.inv+'+ inv':null,useFNP?'FNP 5+':null].filter(Boolean).join(', ')||'None'}</span></div>
+    <div class="rr"><span class="rl">Special rules</span><span class="rv">${[hasDev?'Devastating':null,hasLth?'Lethal Hits':null,hasTwn?'Twin-Linked':null,(hasBlst||hasClv)?`Blast/Cleave +${Math.floor(defMod/5)}A`:null,hasHaz?'Hazardous':null,useMelt?'Melta +2D':null].filter(Boolean).join(', ')||'--'}</span></div>
+    <div class="rr"><span class="rl">Fights First</span><span class="rv">${atkFF?'Active on attacker':'--'}</span></div>
+  </div><p style="font-size:10px;color:var(--text3);margin-top:8px">Single combat phase. Independent rolls. No stratagems.</p></div>`;
+  document.getElementById('sim-result').innerHTML=h;
+  _simChartData={probR};
+  renderSimChart();
+}
+
+// Same hidden-canvas-at-creation issue as the Statistics charts (see renderStatsCharts) —
+// cache the data and (re)create the chart whenever the Combat Sim tab becomes visible.
+let _simChartData=null;
+function renderSimChart(){
+  if(!_simChartData||!document.getElementById('chartSim'))return;
+  const{probR}=_simChartData;
+  if(chartSim)chartSim.destroy();
+  chartSim=new Chart(document.getElementById('chartSim'),{type:'line',data:{labels:[1,2,3,4,5].map(n=>'Round '+n),datasets:[{label:'Kill probability',data:probR.map(p=>+(p*100).toFixed(1)),borderColor:'#c0392b',backgroundColor:'rgba(192,57,43,.15)',fill:true,tension:.3,pointBackgroundColor:'#c0392b',pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{color:'#555',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.04)'}},x:{ticks:{color:'#999',font:{size:10}},grid:{display:false}}}}});
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SIM TAB
+// ══════════════════════════════════════════════════════════════════════════════
+const SM_TARGETS=["captain","captain with jump pack","captain in terminator armour","lieutenant","lieutenant with jump pack","chaplain","chaplain with jump pack","chaplain in terminator armour","librarian","librarian in terminator armour","techmarine","ancient","apothecary","intercessor squad","assault intercessor squad","assault intercessors with jump packs","death company marine","death company marine with jump packs","terminator squad","terminator assault squad","sternguard veteran squad","vanguard veteran squad with jump packs","eradicator squad","hellblaster squad","inceptor squad","aggressor squad","eliminator squad","incursor squad","infiltrator squad","scout squad","dreadnought","brutalis dreadnought","ballistus dreadnought","redemptor dreadnought","death company dreadnought","impulsor","vindicator","repulsor","land raider","stormraven gunship"];
+const ORK_TARGETS=["warboss","bigboss","bannernob","painboy","weirdboy","warboss in mega armour","big mek","boyz","gretchin","nobz","meganobz","breaka boyz","stormboyz","kommandos","tankbustas","burna boyz","lootas","flash gitz","beast snagga boyz","squighog boyz","warbikers","deff dread","killa kans","battlewagon","trukk","stompa"];
+
+function buildTargetDropdown(){
+  let html='<option value="custom">-- Custom target --</option>';
+  if(R&&R.units&&R.units.length){
+    html+='<optgroup label="-- From your roster --">';
+    R.units.forEach((u,i)=>{const p=u.profile;html+=`<option value="roster:${i}">${u.name} (W${p.w} T${p.T} Sv${p.sv}+)</option>`;});
+    html+='</optgroup>';
+  }
+  html+='<optgroup label="-- Space Marines --">';
+  for(const n of SM_TARGETS){const p=UDB[n];if(p)html+=`<option value="ref:${n}">${n} (W${p.w} T${p.T} Sv${p.sv}+)</option>`;}
+  html+='</optgroup>';
+  html+='<optgroup label="-- Orks --">';
+  for(const n of ORK_TARGETS){const p=UDB[n];if(p)html+=`<option value="ref:${n}">${n} (W${p.w} T${p.T} Sv${p.sv}+)</option>`;}
+  html+='</optgroup>';
+  return html;
+}
+
+function buildSim(){
+  const us=R.units;
+  let sA='<select id="sel-atk">';
+  us.forEach((u,i)=>sA+=`<option value="${i}">${u.name}${u.leadedBy?' (led: '+u.leadedBy.split(' ')[0]+')':''}</option>`);
+  sA+='</select>';
+
+  // Leader selector: "None", roster leaders, and all LEADER_DB types as manual override
+  let sL='<select id="sel-leader"><option value="none">-- No leader --</option>';
+  // Leaders already attached in roster (auto-detected)
+  const rosterLeaders = us.filter(u=>(u.profile.tags||[]).includes('LEADER'));
+  if(rosterLeaders.length){
+    sL+='<optgroup label="-- From your roster --">';
+    rosterLeaders.forEach(u=>sL+=`<option value="roster:${u.name}">${u.name}</option>`);
+    sL+='</optgroup>';
+  }
+  // Manual leader types (for reference targets or unattached units)
+  sL+=`<optgroup label="-- Space Marines --">
+    <option value="manual:lieutenant">Lieutenant (Tactical Precision: LETHAL HITS)</option>
+    <option value="manual:chaplain">Chaplain (Spiritual Leader: re-roll hit 1s melee)</option>
+    <option value="manual:captain">Captain (Rites of Battle: re-roll hit 1s)</option>
+    <option value="manual:apothecary">Apothecary (Narthecium: FNP 5+)</option>
+    <option value="manual:librarian">Librarian (Psychic powers)</option>
+  </optgroup>
+  <optgroup label="-- Orks --">
+    <option value="manual:warboss">Warboss (Might Is Right: +1 to Hit melee)</option>
+    <option value="manual:bigboss">Bigboss (Brutal Authority: re-roll hit 1s melee)</option>
+    <option value="manual:painboy">Painboy (Dok's Toolz: FNP 5+)</option>
+    <option value="manual:bannernob">Bannernob (Waaagh! Banner: Inv 5+)</option>
+  </optgroup>`;
+  sL+='</select>';
+
+  const h=`<div class="card"><h3>Combat Configuration</h3>
+    <div class="f2">
+      <div class="fg"><label>Attacker</label>${sA}</div>
+      <div class="fg"><label>Target</label><select id="sel-def">${buildTargetDropdown()}</select></div>
+    </div>
+    <div class="fg" style="margin-bottom:10px">
+      <label>Leader attached to attacker <span style="color:var(--text3);font-weight:400">— overrides roster detection</span></label>
+      ${sL}
+    </div>
+    <div id="custom-row" style="display:none"><div class="f3" style="margin-bottom:10px">
+      <div class="fg"><label>Wounds</label><select id="c-w"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>8</option><option>10</option><option>12</option><option>14</option><option>20</option><option>40</option></select></div>
+      <div class="fg"><label>Save</label><select id="c-sv"><option>2+</option><option>3+</option><option selected>4+</option><option>5+</option><option>6+</option></select></div>
+      <div class="fg"><label>Toughness</label><select id="c-T"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>12</option><option>14</option></select></div>
+    </div></div>
+    <div id="wound-override-row" style="margin-bottom:10px">
+      <div class="fg"><label>Current wounds on target <span style="color:var(--text3);font-weight:400">(blank = full HP)</span></label>
+        <input type="number" id="c-w-override" min="1" placeholder="Leave blank for full HP" style="max-width:200px"></div>
+    </div>
+    <div class="fg" style="margin-bottom:10px"><label>Models in target unit</label>
+      <select id="c-mod" style="max-width:200px"><option>1</option><option selected>5</option><option>10</option><option>20</option><option>30</option></select>
+    </div>
+    <p style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Scenario / Detachment</p>
+    <div style="margin-bottom:4px">
+      <label class="toggle-row"><input type="checkbox" id="o-charge" checked> <strong>Attacker charged this turn</strong></label>
+      <label class="toggle-row"><input type="checkbox" id="o-below-start"> <strong>Below Starting Strength</strong> (Lost Brethren)</label>
+      <label class="toggle-row"><input type="checkbox" id="o-below-half"> <strong>Below Half Strength</strong> (Lost Brethren full re-rolls)</label>
+      <label class="toggle-row"><input type="checkbox" id="o-entrenched"> <strong>Entrenched</strong> (Ceramite Sentinels)</label>
+    </div>
+    <p style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;margin-top:10px">11th Edition Rules</p>
+    <div style="margin-bottom:12px">
+      <label class="toggle-row"><input type="checkbox" id="o-cov"> <strong>Cover</strong> (-1 to hit ranged)</label>
+      <label class="toggle-row"><input type="checkbox" id="o-inv"> <strong>Invulnerable save</strong> (use unit inv. if available)</label>
+      <label class="toggle-row"><input type="checkbox" id="o-fnp"> <strong>Feel No Pain 5+</strong> on target</label>
+      <label class="toggle-row"><input type="checkbox" id="o-twin"> <strong>Twin-Linked</strong> (force re-roll wounds)</label>
+      <label class="toggle-row"><input type="checkbox" id="o-melta"> <strong>Melta within half range</strong> (+2 damage)</label>
+    </div>
+    <button class="btn primary" onclick="runSim()">&#9654; Run Simulation</button>
+  </div><div id="sim-result"></div>`;
+  document.getElementById('sim-c').innerHTML=h;
+
+  document.getElementById('sel-def').addEventListener('change',function(){
+    const v=this.value;
+    const isC=(v==='custom');
+    document.getElementById('custom-row').style.display=isC?'block':'none';
+    document.getElementById('wound-override-row').style.display=isC?'none':'block';
+    if(v.startsWith('roster:')){
+      const u=R.units[parseInt(v.split(':')[1])];
+      document.getElementById('c-w-override').placeholder=`Leave blank for full HP (${u.profile.w}W)`;
+      document.getElementById('c-mod').value=Math.max(1,getModels(u));
+    } else if(v.startsWith('ref:')){
+      const p=UDB[v.slice(4)];
+      if(p){document.getElementById('c-w-override').placeholder=`Leave blank for full HP (${p.w}W)`;document.getElementById('c-mod').value=1;}
+    }
+  });
+
+  // When attacker changes, auto-detect leader from roster
+  document.getElementById('sel-atk').addEventListener('change',function(){
+    const u=R.units[parseInt(this.value)];
+    const leaderSel=document.getElementById('sel-leader');
+    if(u&&u.leadedBy){
+      // Try to select the roster leader
+      const opt=[...leaderSel.options].find(o=>o.value==='roster:'+u.leadedBy);
+      if(opt) leaderSel.value=opt.value;
+      else leaderSel.value='none';
+    } else {
+      leaderSel.value='none';
+    }
+  });
+}
+
+function runSim(){
+  const defVal=document.getElementById('sel-def').value;
+  const useInv=document.getElementById('o-inv').checked;
+  const wOv=parseInt(document.getElementById('c-w-override').value)||null;
+  let def;
+  if(defVal==='custom'){
+    const w=parseInt(document.getElementById('c-w').value)||4;
+    const sv=parseInt((document.getElementById('c-sv').value||'4+').replace('+',''))||4;
+    const T=parseInt(document.getElementById('c-T').value)||4;
+    def={name:'Custom target',points:0,profile:{w:wOv||w,sv,inv:useInv?5:null,T,fnp:null,sp:[],tags:[],kw:[],ab:[]},weapons:[],figures:[]};
+  } else if(defVal.startsWith('roster:')){
+    const u=R.units[parseInt(defVal.split(':')[1])];
+    def={...u,profile:{...u.profile,w:wOv||u.profile.w,inv:useInv?u.profile.inv:null}};
+  } else if(defVal.startsWith('ref:')){
+    const uName=defVal.slice(4);
+    const p=UDB[uName];
+    if(!p){alert('Profile not found: '+uName);return;}
+    def={name:uName,points:0,profile:{...p,w:wOv||p.w,inv:useInv?p.inv:null},weapons:[],figures:[]};
+  } else return;
+
+  // Resolve leader bonuses from selector
+  const leaderVal=document.getElementById('sel-leader').value;
+  const atkIdx=parseInt(document.getElementById('sel-atk').value);
+  const atk=R.units[atkIdx];
+
+  // Start from unit's existing leaderAbilities (from parser)
+  let leaderAbilities=[...(atk.leaderAbilities||[])];
+
+  if(leaderVal!=='none'){
+    if(leaderVal.startsWith('manual:')){
+      // Manual leader override — replaces parsed leader abilities
+      const leaderName=leaderVal.slice(7);
+      leaderAbilities=getLeaderAbilities(leaderName);
+    } else if(leaderVal.startsWith('roster:')){
+      // Roster leader — may already be set, but enforce it
+      const leaderName=leaderVal.slice(7);
+      leaderAbilities=getLeaderAbilities(leaderName);
+    }
+  } else {
+    // "No leader" explicitly chosen — clear abilities
+    leaderAbilities=[];
+  }
+
+  // Run sim with overridden leader abilities
+  runSimWithDef(def, leaderAbilities);
+}
+
+function computeRosterSnapshot(roster){
+  const us = roster.units;
+  const totW   = us.reduce((s,u)=>s+u.profile.w*getModels(u), 0);
+  const totPts = us.reduce((s,u)=>s+u.points, 0);
+  const totMod = us.reduce((s,u)=>s+getModels(u), 0);
+  const wtdMove= us.reduce((s,u)=>s+u.profile.m*getModels(u),0) / Math.max(1,totMod);
+  const stdDef = {w:2,sv:4,inv:null,T:4,fnp:null};
+  const stdCtx = {onCharge:true,belowHalf:false,belowStarting:false,isDeathCompany:false,hasJumpPack:false,entrenched:false,waaagh:false,bigMob:false};
+  let totalDmg = 0, meleeW=0, rangedW=0;
+  const dmgPerUnit = us.map(u=>{
+    const mod = resolveModifiers(u,roster.detachmentObj,{...stdCtx,isDeathCompany:(u.profile.tags||[]).includes('DEATH_COMPANY'),hasJumpPack:(u.profile.tags||[]).includes('JUMP_PACK')});
+    const wpns = getAllWpn(u).filter(w=>w&&w.s);
+    wpns.forEach(w=>{ if(w.t==='cc')meleeW++; else rangedW++; });
+    const d = calcDmg(wpns,stdDef,{inCover:false,fnp:null,twin:false,melta:false,defMod:5},mod);
+    totalDmg+=d; return d;
+  });
+  const meleeRatio = meleeW/Math.max(1,meleeW+rangedW);
+  const profileLabel = meleeRatio>0.65?'Melee-heavy':meleeRatio>0.45?'Mixed':meleeRatio>0.25?'Ranged-leaning':'Ranged-heavy';
+  const avgDmg = totalDmg/Math.max(1,us.length);
+  const variance = dmgPerUnit.reduce((s,v)=>s+Math.pow(v-avgDmg,2),0)/Math.max(1,us.length);
+  const consistencyScore = Math.min(10,+(10-Math.min(10,Math.sqrt(variance)/Math.max(0.1,avgDmg)*5)).toFixed(1));
+  const saveEff = us.reduce((s,u)=>{const svE=(7-u.profile.sv)/6+(u.profile.inv?((7-u.profile.inv)/6)*0.3:0);return s+svE*u.profile.w*getModels(u);},0);
+  const mobilityScore    = Math.min(10,+(wtdMove/2).toFixed(1));
+  const durabScore       = Math.min(10,+(saveEff/totPts*80).toFixed(1));
+  const massScore        = Math.min(10,+(totMod/3).toFixed(1));
+  const firepowerScore   = Math.min(10,+(totalDmg/4).toFixed(1));
+  const notableCount     = us.reduce((s,u)=>s+((u.profile.sp||[]).filter(k=>['FIGHTS_FIRST','LETHAL_HITS','DEVASTATING_WOUNDS','TWIN_LINKED','BLAST','INFILTRATE','STEALTH'].some(n=>k.includes(n))).length),0);
+  const specialScore     = Math.min(10,+(notableCount*1.5).toFixed(1));
+  const globalScore      = Math.round(firepowerScore*2.5+durabScore*2.0+mobilityScore*1.5+massScore*1.0+consistencyScore*1.5+specialScore*1.5);
+  return {
+    id: Date.now(),
+    name: roster.name,
+    faction: roster.subfaction||roster.faction,
+    detachment: (roster.detachment||'').split('(')[0].trim(),
+    points: totPts,
+    savedAt: new Date().toLocaleString(),
+    scores:{ global:globalScore, firepower:firepowerScore, durability:durabScore, mobility:mobilityScore, mass:massScore, consistency:consistencyScore, special:specialScore },
+    stats:{ totW, totMod, wtdMove:+wtdMove.toFixed(1), totalDmg:+totalDmg.toFixed(1), profileLabel, meleeRatio:+meleeRatio.toFixed(2) },
+    unitCount: us.length,
+  };
+}
+
+// In-memory fallback for file:// contexts + window.storage for persistence
+// ── Library storage: memory-first, persist to window.storage / localStorage ──
+const LIB_KEY = '40k_roster_library_v1';
+let _libCache = [];      // always valid — never null
+let _libLoaded = false;  // true once we've attempted to load from persistence
+
+async function _ensureLoaded(){
+  if(_libLoaded) return;
+  _libLoaded = true;
+  if(window.storage){
+    try{
+      const r = await window.storage.get(LIB_KEY);
+      if(r && r.value){ _libCache = JSON.parse(r.value); return; }
+    }catch(e){ console.error('[Library] window.storage.get failed:', e); }
+  }
+  try{
+    const raw = localStorage.getItem(LIB_KEY);
+    if(raw){ _libCache = JSON.parse(raw); return; }
+  }catch(e){ console.error('[Library] localStorage.getItem failed:', e); }
+}
+
+// loadLibrary — async but _libCache is always in sync after first call
+async function loadLibrary(){
+  await _ensureLoaded();
+  return _libCache;
+}
+
+// getLibrary — synchronous, use after at least one loadLibrary() call
+function getLibrary(){ return _libCache; }
+
+let _toastTimer=null;
+function showToast(msg,type='green'){
+  let t=document.getElementById('app-toast');
+  if(!t){
+    t=document.createElement('div');
+    t.id='app-toast';
+    document.body.appendChild(t);
+  }
+  t.textContent=msg;
+  t.className='toast '+type;
+  requestAnimationFrame(()=>t.classList.add('show'));
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+async function saveLibrary(lib){
+  _libCache = lib;
+  let persisted = false;
+  if(window.storage){
+    try{ await window.storage.set(LIB_KEY, JSON.stringify(lib)); persisted = true; }
+    catch(e){ console.error('[Library] window.storage.set failed:', e); }
+  }
+  try{ localStorage.setItem(LIB_KEY, JSON.stringify(lib)); persisted = true; }
+  catch(e){ console.error('[Library] localStorage.setItem failed:', e); }
+  if(!persisted) throw new Error('No storage backend available (window.storage and localStorage both failed)');
+}
+
+function saveRosterToLibrary(){
+  if(!R||!R.units||!R.units.length) return;
+  try{
+    const snap = computeRosterSnapshot(R);
+    // Save full roster for reload (strip circular refs — keep only serialisable data)
+    snap.roster = {
+      name: R.name, faction: R.faction, subfaction: R.subfaction,
+      detachment: R.detachment, points: R.points,
+      units: R.units.map(u=>({
+        name:u.name, points:u.points, section:u.section, ag:u.ag,
+        role:u.role, isWarlord:u.isWarlord,
+        leadedBy:u.leadedBy, leadsUnit:u.leadsUnit,
+        leaderAbilities:u.leaderAbilities||[],
+        profile:u.profile, figures:u.figures||[], weapons:u.weapons||[]
+      }))
+    };
+    const idx = _libCache.findIndex(e=>e.name===snap.name&&e.faction===snap.faction);
+    if(idx>=0) _libCache[idx]=snap; else _libCache.push(snap);
+    console.log('[Library] Saved:', snap.name, '| Total rosters:', _libCache.length);
+    saveLibrary([..._libCache]).then(()=>{
+      showToast(`Saved to library — ${snap.name}`, 'green');
+    }).catch(e=>{
+      console.error('[Library] Persist failed:', e);
+      showToast('Analysed, but could not persist to library storage', 'red');
+    });
+  }catch(e){
+    console.error('[Library] saveRosterToLibrary failed:', e);
+    showToast('Failed to save to library: '+e.message, 'red');
+  }
+}
+
+function deleteFromLibrary(id){
+  _libCache = _libCache.filter(e=>e.id!==id);
+  saveLibrary([..._libCache]).catch(()=>{});
+  buildLibraryTab();
+}
+
+let libSortKey = 'scores.global', libSortDir = -1;
+
+function libGet(entry,key){
+  const parts=key.split('.');
+  let v=entry;for(const p of parts)v=v?.[p];return v??0;
+}
+
+function loadRosterFromLibrary(id){
+  const entry = _libCache.find(e=>e.id===id);
+  if(!entry||!entry.roster){
+    alert('Full roster data not available — re-analyse this list to enable loading.');
+    return;
+  }
+  // Restore R from saved roster
+  R = {...entry.roster};
+  // Re-attach detachmentObj (lost on serialisation)
+  R.detachmentObj = detectDetachment(R.detachment);
+  // Re-resolve leaderAbilities on units (functions can't be serialised)
+  for(const u of R.units){
+    if(u.leadedBy) u.leaderAbilities = getLeaderAbilities(u.leadedBy);
+    else u.leaderAbilities = u.leaderAbilities||[];
+    // Ensure profile ab arrays exist
+    if(!u.profile.ab) u.profile.ab=[];
+    if(!u.profile.kw) u.profile.kw=[];
+    if(!u.profile.sp) u.profile.sp=[];
+    if(!u.profile.tags) u.profile.tags=[];
+  }
+  buildUnits();
+  buildStats();
+  buildSim();
+  showTab('units');
+}
+
+function buildLibraryTab(){
+  const lib = _libCache;
+  let h='';
+  if(!lib.length){
+    document.getElementById('lib-c').innerHTML='<div class="empty">No saved rosters yet &mdash; analyze a roster to add it to the library</div>';
+    return;
+  }
+
+  const sortKeys=[
+    {k:'scores.global',    label:'Score'},
+    {k:'scores.firepower', label:'Firepower'},
+    {k:'scores.durability',label:'Durability'},
+    {k:'scores.mobility',  label:'Mobility'},
+    {k:'stats.wtdMove',    label:'Avg. Move'},
+    {k:'stats.totW',       label:'Total Wounds'},
+    {k:'stats.totMod',     label:'Models'},
+    {k:'stats.totalDmg',   label:'Total Damage'},
+    {k:'scores.special',   label:'Special Rules'},
+    {k:'scores.consistency',label:'Consistency'},
+    {k:'points',           label:'Points'},
+  ];
+
+  h+=`<div class="sort-row"><span style="font-size:11px;color:var(--text3);margin-right:4px">Sort by:</span>`;
+  for(const s of sortKeys){
+    const active=libSortKey===s.k;
+    const arrow=active?(libSortDir===-1?' &#9660;':' &#9650;'):'';
+    h+=`<button class="sort-btn${active?' active':''}" onclick="setLibSort('${s.k}')">${s.label}${arrow}</button>`;
+  }
+  h+=`<button class="btn" style="margin-left:auto;font-size:11px" onclick="exportLibrary()">&#128229; Export JSON</button>`;
+  h+=`<button class="btn" style="font-size:11px" onclick="importLibrary()">&#128228; Import JSON</button>`;
+  h+=`<button class="btn" style="font-size:11px" onclick="if(confirm('Clear all saved rosters?')){_libCache=[];saveLibrary([]).catch(()=>{});buildLibraryTab();}">&#128465; Clear all</button>`;
+  h+=`</div>`;
+
+  const sorted=[...lib].sort((a,b)=>libSortDir*(libGet(b,libSortKey)-libGet(a,libSortKey)));
+
+  // ── Group by points bracket (500 / 1000 / 1500 / 2000 / 2500...) ─────────
+  const bracketOf=pts=>Math.max(500,Math.round(pts/500)*500);
+  const groups={};
+  for(const e of sorted){
+    const b=bracketOf(e.points);
+    (groups[b]=groups[b]||[]).push(e);
+  }
+  const brackets=Object.keys(groups).map(Number).sort((a,b)=>a-b);
+
+  for(const bracket of brackets){
+    const entries=groups[bracket];
+    h+=`<div class="section-header">${bracket} points <span style="color:var(--text3);font-weight:400">(${entries.length} list${entries.length>1?'s':''})</span></div>`;
+
+    // Cards view
+    h+=`<div style="margin-bottom:1.5rem">`;
+    for(const e of entries){
+      const sc=e.scores, st=e.stats;
+      const bars=[
+        {label:'Firepower', val:sc.firepower, color:'#c0392b'},
+        {label:'Durability',val:sc.durability,color:'#7c3aed'},
+        {label:'Mobility',  val:sc.mobility,  color:'#2563eb'},
+        {label:'Mass',      val:sc.mass,      color:'#16a34a'},
+        {label:'Consist.',  val:sc.consistency,color:'#d97706'},
+        {label:'Special',   val:sc.special,   color:'#db2777'},
+      ];
+      h+=`<div class="lib-card">
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          <div style="text-align:center;min-width:52px">
+            <div class="lib-score">${sc.global}</div>
+            <div style="font-size:9px;color:var(--text3)">/100</div>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="lib-card-name">${e.name}</div>
+            <div class="lib-card-meta">
+              <span>${e.faction}</span>
+              <span>${e.detachment}</span>
+              <span>${e.points}pts</span>
+              <span>${e.unitCount} units</span>
+              <span style="color:var(--text3)">${st.profileLabel}</span>
+              <span style="color:var(--text3)">saved ${e.savedAt}</span>
+            </div>
+            <div style="display:flex;gap:12px;font-size:11px;flex-wrap:wrap;margin-bottom:6px">
+              <span>W <strong>${st.totW}</strong></span>
+              <span>Models <strong>${st.totMod}</strong></span>
+              <span>Move <strong>${st.wtdMove}"</strong></span>
+              <span>Dmg <strong>${st.totalDmg}</strong></span>
+            </div>
+            <div class="lib-bars">`;
+      for(const b of bars){
+        const pct=Math.round(b.val/10*100);
+        h+=`<div class="lib-bar-item">
+          <div class="lbi-label"><span>${b.label}</span><span style="color:${b.color}">${b.val}</span></div>
+          <div class="lbi-track"><div class="lbi-fill" style="width:${pct}%;background:${b.color}"></div></div>
+        </div>`;
+      }
+      h+=`</div></div>
+          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+            <button onclick="loadRosterFromLibrary(${e.id})" title="Load this roster" style="padding:4px 10px;font-size:11px;border:1px solid rgba(192,57,43,.5);border-radius:6px;background:rgba(192,57,43,.1);cursor:pointer;color:#f87171;font-family:var(--font)">&#9654; Load</button>
+            <button onclick="deleteFromLibrary(${e.id})" title="Remove" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:2px 4px;font-family:var(--font)">&#10005; Remove</button>
+          </div>
+        </div>
+      </div>`;
+    }
+    h+=`</div>`;
+
+    // Comparison table (scoped to this bracket — comparing across point sizes isn't meaningful)
+    if(entries.length>=2){
+      const colKeys=['scores.global','scores.firepower','scores.durability','scores.mobility','scores.mass','scores.consistency','scores.special','stats.totW','stats.totMod','stats.wtdMove','stats.totalDmg'];
+      const bestVals={};
+      for(const k of colKeys) bestVals[k]=Math.max(...entries.map(e=>libGet(e,k)));
+
+      h+=`<div style="overflow-x:auto">
+      <table class="compare-table">
+        <tr>
+          <th>Roster</th><th>Score</th><th>Firepower</th><th>Durability</th><th>Mobility</th>
+          <th>Mass</th><th>Consistency</th><th>Special</th>
+          <th>Wounds</th><th>Models</th><th>Move"</th><th>Dmg</th><th>Profile</th>
+        </tr>`;
+      for(const e of entries){
+        function cell(k,fmt){const v=libGet(e,k);const best=v===bestVals[k];return `<td class="${best?'best-val':''}">${fmt?fmt(v):v}</td>`;}
+        h+=`<tr>
+          <td><strong>${e.name}</strong><br><span style="color:var(--text3);font-size:10px">${e.faction}</span></td>
+          ${cell('scores.global')}${cell('scores.firepower')}${cell('scores.durability')}${cell('scores.mobility')}
+          ${cell('scores.mass')}${cell('scores.consistency')}${cell('scores.special')}
+          ${cell('stats.totW')}${cell('stats.totMod')}${cell('stats.wtdMove',v=>v+'"')}${cell('stats.totalDmg',v=>v.toFixed(1))}
+          <td style="color:var(--text3)">${e.stats.profileLabel}</td>
+        </tr>`;
+      }
+      h+=`</table></div>`;
+    }
+  }
+
+  document.getElementById('lib-c').innerHTML=h;
+}
+
+function setLibSort(key){
+  if(libSortKey===key) libSortDir*=-1;
+  else{libSortKey=key;libSortDir=-1;}
+  buildLibraryTab();
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// URL IMPORT — fetch a page and extract 40K roster text
+// ══════════════════════════════════════════════════════════════════════════════
+async function importFromURL(){
+  const url = document.getElementById('url-input').value.trim();
+  const statusEl = document.getElementById('url-status');
+  if(!url){ showUrlStatus('Enter a URL first', 'amber'); return; }
+
+  showUrlStatus('Fetching page...', 'info');
+
+  // Use a CORS proxy — allorigins is public and reliable
+  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+
+  let html;
+  try{
+    const resp = await fetch(proxyUrl, {signal: AbortSignal.timeout(15000)});
+    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    html = data.contents;
+  }catch(e){
+    showUrlStatus(`Failed to fetch: ${e.message}. Try copying the list manually.`, 'red');
+    return;
+  }
+
+  // Extract text from HTML
+  const text = extractRosterText(html, url);
+  if(!text){
+    showUrlStatus('No roster found in this page. Try a direct list URL or paste manually.', 'amber');
+    return;
+  }
+
+  // Check if multiple lists found (Goonhammer articles have many)
+  const lists = splitMultipleLists(text);
+  if(lists.length > 1){
+    showUrlStatus(`Found ${lists.length} lists — showing selector`, 'green');
+    showListSelector(lists, url);
+    return;
+  }
+
+  // Single list — load directly
+  document.getElementById('roster-input').value = text.trim();
+  showUrlStatus(`Roster loaded (${text.split('\n').length} lines) — click Analyze`, 'green');
+}
+
+function showUrlStatus(msg, type){
+  const el = document.getElementById('url-status');
+  const colors = {info:'var(--text2)', green:'#4ade80', amber:'#fbbf24', red:'#f87171'};
+  el.style.display = 'block';
+  el.style.color = colors[type]||'var(--text2)';
+  el.textContent = msg;
+}
+
+function extractRosterText(rawHtml, sourceUrl){
+  // Parse HTML
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(rawHtml, 'text/html');
+
+  // Remove scripts, styles, nav, footer
+  ['script','style','nav','footer','header','.nav','.sidebar'].forEach(sel=>{
+    try{ doc.querySelectorAll(sel).forEach(e=>e.remove()); }catch(e){}
+  });
+
+  const fullText = doc.body?.innerText || doc.body?.textContent || '';
+
+  // Strategy 1: Look for BCP-style header block
+  const bcpMatch = fullText.match(
+    /\+\+\+\+\+\+\s*[\s\S]{20,5000}?(?=\+\+\+\+\+\+|$)/
+  );
+  if(bcpMatch) return normalizeBCPFormat(bcpMatch[0]);
+
+  // Strategy 2: Look for Warhammer App format blocks
+  // Detect: line with "(NNN points)" + BATTLELINE or CHARACTERS or OTHER DATASHEETS
+  const waMatch = fullText.match(
+    /[^\n]{5,80}\(\d{3,4}\s*[Pp]oints\)[^\n]*\n[\s\S]{100,6000}?(?=\n[A-Z][A-Z ]{5,}\n|\n\n\n|$)/
+  );
+  if(waMatch) return waMatch[0];
+
+  // Strategy 3: Goonhammer/Tabletop Battles article — find all embedded lists
+  // Look for faction + detachment + units pattern
+  const blocks = [];
+  const lines = fullText.split('\n');
+  let inBlock = false, block = [], blankCount = 0;
+  for(const line of lines){
+    const tr = line.trim();
+    if(!inBlock){
+      // Start detection: "Xxx (NNN Points)" + next lines look like a list
+      if(/^.{3,60}\(\d{3,4}\s*[Pp]oints\)/.test(tr) &&
+         !tr.startsWith('•') && !tr.startsWith('◦')){
+        inBlock = true; block = [line]; blankCount = 0;
+      }
+    } else {
+      if(!tr) blankCount++;
+      else blankCount = 0;
+      block.push(line);
+      // End: 3+ consecutive blanks, or line looks like article text (long sentence)
+      if(blankCount >= 3 || (tr.length > 120 && !tr.includes('Points') && !tr.startsWith('•'))){
+        if(block.join('\n').includes('Points') && block.length > 5){
+          blocks.push(block.join('\n').trim());
+        }
+        inBlock = false; block = []; blankCount = 0;
+      }
+    }
+  }
+  if(blocks.length > 0) return blocks.join('\n\n---\n\n');
+
+  return null;
+}
+
+function normalizeBCPFormat(text){
+  // BCP format uses "◦" bullets and slightly different structure
+  // Convert to Warhammer App format
+  return text
+    .replace(/◦\s+/g, '• ')
+    .replace(/\+\s+FACTION KEYWORD:[^\n]+\n/g,'')
+    .replace(/\+\s+DETACHMENT:\s*([^\n]+)\n/g, (m, det) => det.trim() + '\n')
+    .replace(/\+\s+TOTAL ARMY POINTS:\s*(\d+)pts\n/g, '')
+    .replace(/\+\s+WARLORD:[^\n]+\n/g,'')
+    .replace(/\+\s+ENHANCEMENT:[^\n]+\n/g,'')
+    .replace(/\+\s+NUMBER OF UNITS:[^\n]+\n/g,'')
+    .replace(/\+\s+SECONDARY:[^\n]+\n/g,'')
+    .replace(/\+{3,}/g,'')
+    .replace(/^CHARACTER\b/mg, 'CHARACTERS')
+    .replace(/^OTHER DATASHEETS$/mg, 'OTHER DATASHEETS')
+    .trim();
+}
+
+function splitMultipleLists(text){
+  // Split on --- separator inserted by extractRosterText
+  const parts = text.split(/\n---\n/).map(s=>s.trim()).filter(s=>s.length>50);
+  return parts;
+}
+
+function showListSelector(lists, url){
+  const container = document.getElementById('url-status');
+  let html = `<div style="margin-top:8px"><p style="font-size:11px;color:var(--text3);margin-bottom:6px">Multiple rosters found — select one to load:</p>`;
+  lists.forEach((list, i)=>{
+    // Extract first meaningful line as title
+    const title = list.split('\n').find(l=>l.trim().length>3&&l.trim().length<80)||`List ${i+1}`;
+    const pts = (list.match(/\((\d{3,4})\s*[Pp]oints\)/)||[])[1];
+    html += `<button class="btn" style="margin:2px 4px 2px 0;font-size:11px" onclick="loadListFromSelector(${i})">${title.trim()}${pts?` (${pts}pts)`:''}</button>`;
+  });
+  html += `</div>`;
+  container.innerHTML = html;
+  container.style.display = 'block';
+  // Store lists globally for selector
+  window._importedLists = lists;
+}
+
+function loadListFromSelector(idx){
+  const list = window._importedLists[idx];
+  if(!list) return;
+  document.getElementById('roster-input').value = list;
+  document.getElementById('url-status').innerHTML = '';
+  document.getElementById('url-status').textContent = 'List loaded — click Analyze to process it';
+  document.getElementById('url-status').style.color = '#4ade80';
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// LIBRARY EXPORT / IMPORT
+// ══════════════════════════════════════════════════════════════════════════════
+function exportLibrary(){
+  if(!_libCache.length){ alert('Library is empty — analyze some rosters first.'); return; }
+  const blob = new Blob([JSON.stringify(_libCache, null, 2)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = '40k_roster_library.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importLibrary(){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    try{
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if(!Array.isArray(data)) throw new Error('Invalid format');
+      // Merge: keep existing entries not in the file, add new ones
+      const merged = [..._libCache];
+      let added = 0;
+      for(const entry of data){
+        if(!entry.name || !entry.faction) continue;
+        const exists = merged.findIndex(e=>e.name===entry.name&&e.faction===entry.faction);
+        if(exists>=0) merged[exists]=entry;
+        else { merged.push(entry); added++; }
+      }
+      _libCache = merged;
+      await saveLibrary(_libCache);
+      buildLibraryTab();
+      alert(`Imported ${data.length} roster(s) — ${added} new, ${data.length-added} updated.`);
+    }catch(err){
+      alert('Import failed: ' + err.message);
+    }
+  };
+  input.click();
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  buildDetachmentsTab();
+  // Reload persisted library from storage on startup
+  _ensureLoaded().then(()=>{
+    console.log('[Library] Loaded from storage:', _libCache.length, 'roster(s)');
+  }).catch(()=>{});
+});
+
+// PWA offline cache — service workers require a secure context (https/localhost),
+// which Electron's file:// load never is, so skip registration there entirely.
+if('serviceWorker' in navigator && location.protocol!=='file:'){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('service-worker.js')
+      .then(reg=>console.log('[SW] registered:', reg.scope))
+      .catch(e=>console.error('[SW] registration failed:', e));
+  });
+}
+</script>
+
+
+</body></html>
