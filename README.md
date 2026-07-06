@@ -10,6 +10,7 @@ Application desktop Windows/Mac/Linux pour analyser les listes Warhammer 40K 11e
 - **Detachments** — base de données des détachements SM/BA/Orks 11e édition (règles, dispositions de force, matrice de missions)
 - **Combat Sim** — simulateur de combat probabiliste (touche/blessure/sauvegarde/dégâts, probabilité de kill)
 - **Library** — bibliothèque de listes sauvegardées (`localStorage`), avec tri, comparaison, import/export JSON
+- **Live Action** — suivi d'une partie en direct : charge ta liste + colle celle de l'adversaire, suis les PV/modèles restants unité par unité au fil de la partie, et calcule les chances de dégâts en tenant compte de l'état réel (pas d'un profil plein PV)
 
 Le parseur reconnaît le format texte du Warhammer App/BattleScribe et fait correspondre les noms d'unités/armes aux bases de données internes (`UDB`, `WDB`, `DETACHMENT_DB`, `LEADER_DB`) pour déduire les profils de combat et simuler les jets de dés.
 
