@@ -101,10 +101,12 @@ L'utilisateur a accepté en bloc mes 11 propositions d'amélioration et voulait 
 
 Testé (eval + mesures directes, viewport 1280 et 412px) : cycle de thème, Oath, swap (y compris cas d'erreur), barres de vie (50% ambre vérifié), tri des morts, CP persistés après reload, duel post-"redémarrage" (réhydratation OK), distribution avec marqueurs corrects, target priority cohérente, notes (échappées, survivent à la ré-analyse), steppers 44×42 en mobile, leaders Ork actifs. Aucune erreur console.
 
+**Validé par l'utilisateur et mergé dans `main` le 2026-07-06** (fast-forward) → déployé. La branche `v2` peut être supprimée ou réutilisée pour la prochaine fournée.
+
 ## Points d'attention / dette technique repérée (non traités, hors scope des demandes)
 
 - ~~CSS dupliqué (`.lib-bars`, `.sort-btn`, `.compare-table`...)~~ → corrigé le 2026-07-06 (dédupliqué en même temps que le travail responsive, cf. session 2026-07-06).
 - `saveRosterToLibrary()` déduplique par `name+faction` — si l'utilisateur ré-analyse une liste avec le même nom, l'entrée existante est écrasée en place plutôt que d'en créer une nouvelle. Comportement voulu a priori, mais peut surprendre.
 - `RULES_GLOSSARY` (session 2026-07-06) est volontairement incomplet — n'hésiter à l'étendre si l'utilisateur signale une pastille sans info-bulle qui devrait en avoir une. Notamment : les codes `sp[]` spécifiques aux unités Orks dans `UDB` n'ont pas d'entrée glossaire pour l'instant (scope limité à SM+BA sur demande explicite le 2026-07-06) — à faire si/quand l'utilisateur joue Orks.
-- ~~`LEADER_DB` n'a que des entrées Space Marines~~ → corrigé sur la branche `v2` (session 2026-07-06 suite 3) — entrées Ork ajoutées. Toujours vrai sur `main` tant que non mergé.
+- ~~`LEADER_DB` n'a que des entrées Space Marines~~ → corrigé (session 2026-07-06 suite 3, mergé dans `main` le jour même) — entrées Ork ajoutées.
 - Les unités ajoutées via un lookup `UDB` seul (reference targets du Combat Sim, "+ Add opponent unit" en Live Action) n'ont **aucune arme** — les armes viennent uniquement du texte de liste parsé. C'est un choix de conception existant (reference targets = profils défensifs purs), documenté et géré en Live Action (filtré du dropdown Attaquant), mais à garder en tête si on étend l'usage de `mProf()`/`UDB` ailleurs.
