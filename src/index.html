@@ -4,12 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0f0f0f">
+<script>document.documentElement.dataset.theme=(function(){try{return localStorage.getItem('40k_theme')||'light';}catch(e){return 'light';}})();</script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="assets/icon.png">
 <title>40K Roster Analyzer — 11th Edition</title>
 <script src="vendor/chart.umd.min.js"></script>
 <style>
-:root{--bg:#0f0f0f;--bg2:#1a1a1a;--bg3:#242424;--border:#2e2e2e;--text:#e8e8e6;--text2:#999;--text3:#555;--red:#c0392b;--red2:#922b21;--radius:8px;--font:'Segoe UI',system-ui,sans-serif;--mono:'Cascadia Code','Fira Code',monospace}
+:root{--bg:#0f0f0f;--bg2:#1a1a1a;--bg3:#242424;--border:#2e2e2e;--text:#e8e8e6;--text2:#999;--text3:#555;--red:#c0392b;--red2:#922b21;--radius:8px;--font:'Segoe UI',system-ui,sans-serif;--mono:'Cascadia Code','Fira Code',monospace;
+  --c-purple:#a78bfa;--c-green:#4ade80;--c-blue:#60a5fa;--c-red-lt:#f87171;--c-amber:#fbbf24;--c-pink:#f472b6;--c-gray:#a1a1aa;--c-teal:#34d399;--c-gold:#fde68a;
+  --overlay-1:rgba(255,255,255,.02);--overlay-2:rgba(255,255,255,.04);--overlay-3:rgba(255,255,255,.08);--popover-bg:#1a1a1a}
+[data-theme="light"]{--bg:#f7f7f5;--bg2:#fff;--bg3:#eef0ef;--border:#ddd;--text:#1a1a1a;--text2:#555;--text3:#888;--red2:#a93226;
+  --c-purple:#6d28d9;--c-green:#15803d;--c-blue:#1d4ed8;--c-red-lt:#991b1b;--c-amber:#b45309;--c-pink:#be185d;--c-gray:#52525b;--c-teal:#047857;--c-gold:#92400e;
+  --overlay-1:rgba(0,0,0,.03);--overlay-2:rgba(0,0,0,.05);--overlay-3:rgba(0,0,0,.06);--popover-bg:var(--bg2)}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;min-height:100vh}
 .app{max-width:940px;margin:0 auto;padding:1.5rem 1rem 4rem}
@@ -39,15 +45,15 @@ select:focus,input:focus{outline:none;border-color:var(--red)}
 .uh{display:flex;align-items:center;gap:6px;margin-bottom:7px;flex-wrap:wrap}
 .un{font-size:13px;font-weight:600;flex:1;min-width:0}
 .badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600}
-.bl{background:rgba(124,58,237,.2);color:#a78bfa}.bb{background:rgba(22,163,74,.15);color:#4ade80}
-.bbl{background:rgba(217,119,6,.15);color:#fbbf24}.bch{background:rgba(37,99,235,.15);color:#60a5fa}
-.bw{background:rgba(192,57,43,.2);color:#f87171}.bp{background:var(--bg3);color:var(--text3)}
+.bl{background:rgba(124,58,237,.2);color:var(--c-purple)}.bb{background:rgba(22,163,74,.15);color:var(--c-green)}
+.bbl{background:rgba(217,119,6,.15);color:var(--c-amber)}.bch{background:rgba(37,99,235,.15);color:var(--c-blue)}
+.bw{background:rgba(192,57,43,.2);color:var(--c-red-lt)}.bp{background:var(--bg3);color:var(--text3)}
 .prow{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--text2);margin-bottom:6px}
 .kw-list{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:5px}
-.kw-tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:600;background:rgba(255,255,255,.04);color:var(--text3);border:1px solid var(--border)}
-.kw-tag.notable{background:rgba(124,58,237,.12);color:#a78bfa;border-color:rgba(124,58,237,.3)}
+.kw-tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:600;background:var(--overlay-2);color:var(--text3);border:1px solid var(--border)}
+.kw-tag.notable{background:rgba(124,58,237,.12);color:var(--c-purple);border-color:rgba(124,58,237,.3)}
 .ab-list{margin-bottom:6px}
-.ab-item{font-size:11px;margin-bottom:3px;padding:3px 6px;border-radius:4px;background:rgba(255,255,255,.02);border-left:2px solid var(--border)}
+.ab-item{font-size:11px;margin-bottom:3px;padding:3px 6px;border-radius:4px;background:var(--overlay-1);border-left:2px solid var(--border)}
 .ab-item .ab-name{font-weight:600;color:var(--text2)}.ab-item .ab-desc{color:var(--text3);font-size:10px}
 .wgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:5px;margin-top:6px}
 .wi{background:var(--bg3);border-radius:6px;padding:7px 9px}
@@ -56,32 +62,32 @@ select:focus,input:focus{outline:none;border-color:var(--red)}
 .wst{font-size:10px;color:var(--text3)}.wst span{color:var(--text2);font-weight:600}
 .kw-row{margin-top:4px;display:flex;flex-wrap:wrap;gap:2px}
 .kp{display:inline-block;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:600}
-.kdev{background:rgba(192,57,43,.2);color:#f87171}.klth{background:rgba(124,58,237,.2);color:#a78bfa}
-.ktwn{background:rgba(22,163,74,.15);color:#4ade80}.kbst{background:rgba(37,99,235,.15);color:#60a5fa}
-.kclv{background:rgba(219,39,119,.15);color:#f472b6}.khz{background:rgba(161,161,170,.1);color:#a1a1aa}
-.ksu{background:rgba(16,185,129,.15);color:#34d399}.kmlt{background:rgba(217,119,6,.15);color:#fbbf24}
+.kdev{background:rgba(192,57,43,.2);color:var(--c-red-lt)}.klth{background:rgba(124,58,237,.2);color:var(--c-purple)}
+.ktwn{background:rgba(22,163,74,.15);color:var(--c-green)}.kbst{background:rgba(37,99,235,.15);color:var(--c-blue)}
+.kclv{background:rgba(219,39,119,.15);color:var(--c-pink)}.khz{background:rgba(161,161,170,.1);color:var(--c-gray)}
+.ksu{background:rgba(16,185,129,.15);color:var(--c-teal)}.kmlt{background:rgba(217,119,6,.15);color:var(--c-amber)}
 .ag{border:1px solid rgba(192,57,43,.4);border-radius:var(--radius);padding:12px;margin-bottom:1rem;background:rgba(192,57,43,.04)}
 .ag-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .ag-title{font-size:12px;font-weight:700;color:var(--red)}
 .leader-bonus{background:rgba(184,134,11,.12);border:1px solid rgba(184,134,11,.3);border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:11px}
-.leader-bonus .lbt{font-weight:700;color:#fde68a;margin-bottom:3px}
+.leader-bonus .lbt{font-weight:700;color:var(--c-gold);margin-bottom:3px}
 .leader-bonus .lbd{color:var(--text2);line-height:1.5}
 .det-banner{border:1px solid rgba(192,57,43,.4);border-radius:var(--radius);padding:12px 14px;margin-bottom:1.2rem;background:rgba(192,57,43,.06)}
 .det-banner .det-name{font-size:14px;font-weight:700;color:var(--red);margin-bottom:2px}
 .det-banner .det-meta{font-size:11px;margin-bottom:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .det-banner .det-rule{font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px}
 .det-banner .det-desc{font-size:11px;color:var(--text2);line-height:1.6}
-.det-banner .det-calc{margin-top:8px;padding-top:8px;border-top:1px solid rgba(192,57,43,.2);font-size:11px;color:#fde68a}
+.det-banner .det-calc{margin-top:8px;padding-top:8px;border-top:1px solid rgba(192,57,43,.2);font-size:11px;color:var(--c-gold)}
 .disp-pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
-.disp-th{background:rgba(37,99,235,.2);color:#60a5fa}
-.disp-pf{background:rgba(192,57,43,.2);color:#f87171}
-.disp-di{background:rgba(124,58,237,.2);color:#a78bfa}
-.disp-re{background:rgba(16,185,129,.2);color:#34d399}
-.disp-pa{background:rgba(217,119,6,.2);color:#fbbf24}
-.dp-pill{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;background:rgba(255,255,255,.08);color:var(--text2)}
+.disp-th{background:rgba(37,99,235,.2);color:var(--c-blue)}
+.disp-pf{background:rgba(192,57,43,.2);color:var(--c-red-lt)}
+.disp-di{background:rgba(124,58,237,.2);color:var(--c-purple)}
+.disp-re{background:rgba(16,185,129,.2);color:var(--c-teal)}
+.disp-pa{background:rgba(217,119,6,.2);color:var(--c-amber)}
+.dp-pill{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;background:var(--overlay-3);color:var(--text2)}
 .sl{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin:1.2rem 0 8px}
 .divider{border:none;border-top:1px solid var(--border);margin:1.4rem 0}
-.err{color:#f87171;font-size:12px;margin-top:8px;padding:8px 12px;background:rgba(192,57,43,.1);border-radius:var(--radius);display:none;border-left:2px solid var(--red)}
+.err{color:var(--c-red-lt);font-size:12px;margin-top:8px;padding:8px 12px;background:rgba(192,57,43,.1);border-radius:var(--radius);display:none;border-left:2px solid var(--red)}
 .f2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
 .f3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px}
 .fg label{font-size:11px;color:var(--text3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
@@ -96,10 +102,10 @@ select:focus,input:focus{outline:none;border-color:var(--red)}
 .rr{display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px solid var(--border)}
 .rr:last-child{border:none}.rl{color:var(--text3)}.rv{font-weight:600;color:var(--text2)}
 .info{border-radius:var(--radius);padding:7px 10px;margin-bottom:8px;font-size:11px;font-weight:500}
-.info.red{background:rgba(192,57,43,.15);color:#f87171}
-.info.amber{background:rgba(217,119,6,.12);color:#fbbf24}
-.info.green{background:rgba(22,163,74,.12);color:#4ade80}
-.info.gold{background:rgba(184,134,11,.12);color:#fde68a}
+.info.red{background:rgba(192,57,43,.15);color:var(--c-red-lt)}
+.info.amber{background:rgba(217,119,6,.12);color:var(--c-amber)}
+.info.green{background:rgba(22,163,74,.12);color:var(--c-green)}
+.info.gold{background:rgba(184,134,11,.12);color:var(--c-gold)}
 .empty{text-align:center;padding:3rem;color:var(--text3);font-size:13px}
 .wpn-detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px;margin-top:10px}
 .wpn-detail-card{background:var(--bg3);border-radius:var(--radius);padding:8px 10px;border:1px solid transparent}
@@ -107,7 +113,7 @@ select:focus,input:focus{outline:none;border-color:var(--red)}
 .wpn-detail-name{font-size:11px;font-weight:600;margin-bottom:5px}
 .wpn-detail-dmg{font-size:18px;font-weight:700;color:var(--red)}
 .wpn-detail-sub{font-size:10px;color:var(--text3);margin-top:2px}
-.bonus-tag{font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(184,134,11,.2);color:#fde68a;font-weight:600;margin-left:4px}
+.bonus-tag{font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(184,134,11,.2);color:var(--c-gold);font-weight:600;margin-left:4px}
 .det-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:1.5rem}
 .det-card{background:var(--bg3);border-radius:var(--radius);padding:10px 12px;border:1px solid var(--border)}
 .det-card.active-det{border-color:rgba(192,57,43,.6);background:rgba(192,57,43,.05)}
@@ -131,8 +137,8 @@ select:focus,input:focus{outline:none;border-color:var(--red)}
 .compare-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:1rem}
 .compare-table th{background:var(--bg3);padding:5px 8px;border:1px solid var(--border);text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3)}
 .compare-table td{padding:5px 8px;border:1px solid var(--border);color:var(--text2)}
-.compare-table tr:hover td{background:rgba(255,255,255,.02)}
-.best-val{color:#4ade80;font-weight:700}
+.compare-table tr:hover td{background:var(--overlay-1)}
+.best-val{color:var(--c-green);font-weight:700}
 table{border-collapse:collapse;width:100%;font-size:10px}
 td,th{padding:6px 8px;border:1px solid var(--border)}
 th{background:var(--bg3)}
@@ -143,7 +149,7 @@ th{background:var(--bg3)}
 .army-score-grid{display:grid;grid-template-columns:1fr 1fr 150px;gap:16px;align-items:center}
 .army-radar-box{position:relative;width:150px;height:150px;margin:0 auto}
 [data-rule]{cursor:help}
-.rule-popover{position:absolute;max-width:240px;background:#1a1a1a;border:1px solid var(--red);border-radius:6px;padding:8px 10px;font-size:11px;line-height:1.4;color:var(--text2);box-shadow:0 6px 20px rgba(0,0,0,.5);z-index:10000;pointer-events:none}
+.rule-popover{position:absolute;max-width:240px;background:var(--popover-bg);border:1px solid var(--red);border-radius:6px;padding:8px 10px;font-size:11px;line-height:1.4;color:var(--text2);box-shadow:0 6px 20px rgba(0,0,0,.35);z-index:10000;pointer-events:none}
 
 /* ── Mobile (phones, e.g. Pixel 7 @ 412px CSS width) ─────────────────────── */
 @media (max-width:640px){
@@ -159,8 +165,13 @@ th{background:var(--bg3)}
 </head>
 <body>
 <div class="app">
-<h1>40K Roster <span>Analyzer</span></h1>
-<p class="subtitle">11th Edition · All SM+Ork detachments · Leader bonuses · Unit abilities · Library &amp; comparison</p>
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+  <div>
+    <h1>40K Roster <span>Analyzer</span></h1>
+    <p class="subtitle">11th Edition · All SM+Ork detachments · Leader bonuses · Unit abilities · Library &amp; comparison</p>
+  </div>
+  <button id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark" style="border:1px solid var(--border);background:var(--bg2);border-radius:20px;padding:6px 10px;font-size:14px;cursor:pointer;line-height:1">🌙</button>
+</div>
 <div class="tabs">
   <button class="tab active" onclick="showTab('paste')">Paste Roster</button>
   <button class="tab" onclick="showTab('units')">Units</button>
@@ -582,6 +593,20 @@ function showTab(t){document.querySelectorAll('.tab').forEach(e=>e.classList.rem
 function loadSample(k){document.getElementById('roster-input').value=SAMPLES[k];}
 let R=null,chartSt=null,chartRadar=null,chartEff=null,chartSim=null;
 
+function applyTheme(theme){
+  document.documentElement.dataset.theme=theme;
+  try{localStorage.setItem('40k_theme',theme);}catch(e){}
+  const btn=document.getElementById('theme-toggle');
+  if(btn)btn.textContent=theme==='light'?'🌙':'☀️';
+  // Already-rendered charts have their colors baked in at creation time — recreate
+  // them from cache so they pick up the new theme's palette (see chartColors()).
+  renderStatsCharts();
+  renderSimChart();
+}
+function toggleTheme(){
+  applyTheme(document.documentElement.dataset.theme==='light'?'dark':'light');
+}
+
 const SIZE_KW=/^(combat patrol|incursion|strike force|onslaught)/i;
 const SECTION_MAP={'BATTLELINE':'battleline','CHARACTERS':'character','DEDICATED TRANSPORTS':'transport','OTHER DATASHEETS':'other','Attached Units':'attached'};
 
@@ -805,6 +830,17 @@ const RULES_GLOSSARY={
   'ASSAULT RAMP':'Units disembarking from this Transport can still declare a charge that turn.',
   'LONE OPERATIVE':'Cannot be selected as the target of a ranged attack unless the attacker is within 12".',
   'PSYCHIC':'This unit/weapon uses Psychic abilities and is affected by anti-Psyker rules.',
+  // Space Marines / Blood Angels unit-specific special rules (sourced from this
+  // app's own `ab` ability text for the units that carry them, for consistency
+  // with what the combat sim actually computes).
+  'LETHAL HITS MELEE':'This unit\'s melee weapons gain LETHAL HITS (a Critical Hit of 6 automatically wounds).',
+  'FINEST HOUR':'Once per battle, at the start of the Fight phase: this unit gains FIGHTS FIRST and DEVASTATING WOUNDS on melee weapons until the end of the phase.',
+  'TACTICAL PRECISION':'All weapons belonging to the unit this model is leading gain LETHAL HITS.',
+  'LITANIES':'Spiritual Leader: re-roll hit rolls of 1 for the attached unit\'s melee weapons. Litany of Hate: in the Command phase, re-roll all melee hit rolls for the attached unit this turn.',
+  'BLESSING OMNISSIAH':'At the end of each Movement phase, repair one friendly VEHICLE within 3", restoring D3 wounds.',
+  'OBJ SECURED':'This unit counts as having higher Objective Control than standard infantry when contesting objectives.',
+  'DEADLY LANDING':'When this unit arrives from Reserves via Ingress, each enemy unit within 1" suffers 1 mortal wound.',
+  'SCOUTS 6':'Before the first turn begins, this unit can make a free 6" Normal move.',
 };
 function ruleText(raw){ return raw ? RULES_GLOSSARY[raw.toUpperCase().replace(/_/g,' ').trim()] || null : null; }
 
@@ -864,7 +900,7 @@ function renderUC(u){
   if(p.inv)h+=`<span>Inv ${p.inv}+</span>`;
   h+=`<span>M ${p.m}"</span><span>T ${p.T}</span>`;
   if(p.fnp)h+=`<span>FNP ${p.fnp}+</span>`;
-  if(p.sp&&p.sp.length)h+=`<span style="color:#f87171;font-weight:600">&#9889; ${p.sp.map(s=>s.replace(/_/g,' ')).join(', ')}</span>`;
+  if(p.sp&&p.sp.length)h+=`<span style="color:var(--c-red-lt);font-weight:600">&#9889; ${p.sp.map(s=>`<span data-rule="${s}" style="cursor:help">${s.replace(/_/g,' ')}</span>`).join(', ')}</span>`;
   h+=`</div>`;
   if(p.kw&&p.kw.length){h+=`<div class="kw-list">`;for(const k of p.kw){const notable=NOTABLE_KW.some(n=>k.toUpperCase().replace(/ /g,'_').includes(n.replace(/ /g,'_')));h+=`<span class="kw-tag${notable?' notable':''}" data-rule="${k}">${k}</span>`;}h+=`</div>`;}
   if(p.ab&&p.ab.length){h+=`<div class="ab-list">`;for(const ab of p.ab)h+=`<div class="ab-item"><span class="ab-name">${ab.n}</span> <span class="ab-desc">&#8212; ${ab.d}</span></div>`;h+=`</div>`;}
@@ -1153,16 +1189,24 @@ function buildStats(){
 // (display:none) tab measures 0x0 — Chart.js can't size it correctly at creation time,
 // and a plain .resize() later isn't reliable. So charts are (re)created from cached
 // data every time the Statistics tab actually becomes visible (see showTab()).
+function chartColors(){
+  const light=document.documentElement.dataset.theme==='light';
+  return light
+    ? {legend:'#555',tickA:'#444',tickB:'#555',grid:'rgba(0,0,0,.08)',gridStrong:'rgba(0,0,0,.12)'}
+    : {legend:'#777',tickA:'#555',tickB:'#999',grid:'rgba(255,255,255,.04)',gridStrong:'rgba(255,255,255,.08)'};
+}
+
 let _statsChartData=null;
 function renderStatsCharts(){
   if(!_statsChartData||!document.getElementById('chartSt'))return;
   const{labels,dmgData,wData,effLabels,effData,scores}=_statsChartData;
+  const cc=chartColors();
   if(chartSt)chartSt.destroy();
-  chartSt=new Chart(document.getElementById('chartSt'),{type:'bar',data:{labels,datasets:[{label:'Exp. damage',data:dmgData,backgroundColor:'#c0392b',borderRadius:3},{label:'Total wounds',data:wData,backgroundColor:'rgba(124,58,237,0.45)',borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#777',font:{size:11}}}},scales:{x:{ticks:{color:'#555'},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#999',font:{size:10}}}}}});
+  chartSt=new Chart(document.getElementById('chartSt'),{type:'bar',data:{labels,datasets:[{label:'Exp. damage',data:dmgData,backgroundColor:'#c0392b',borderRadius:3},{label:'Total wounds',data:wData,backgroundColor:'rgba(124,58,237,0.45)',borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:cc.legend,font:{size:11}}}},scales:{x:{ticks:{color:cc.tickA},grid:{color:cc.grid}},y:{ticks:{color:cc.tickB,font:{size:10}}}}}});
   if(chartRadar)chartRadar.destroy();
-  chartRadar=new Chart(document.getElementById('chartRadar'),{type:'radar',data:{labels:['Firepower','Durability','Mobility','Mass','Consist.','Special'],datasets:[{data:scores,backgroundColor:'rgba(192,57,43,.25)',borderColor:'#c0392b',pointBackgroundColor:'#c0392b',pointRadius:2,borderWidth:1.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{r:{min:0,max:10,ticks:{display:false,stepSize:2},pointLabels:{color:'#999',font:{size:8}},grid:{color:'rgba(255,255,255,0.08)'},angleLines:{color:'rgba(255,255,255,0.08)'}}}}});
+  chartRadar=new Chart(document.getElementById('chartRadar'),{type:'radar',data:{labels:['Firepower','Durability','Mobility','Mass','Consist.','Special'],datasets:[{data:scores,backgroundColor:'rgba(192,57,43,.25)',borderColor:'#c0392b',pointBackgroundColor:'#c0392b',pointRadius:2,borderWidth:1.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{r:{min:0,max:10,ticks:{display:false,stepSize:2},pointLabels:{color:cc.tickB,font:{size:8}},grid:{color:cc.gridStrong},angleLines:{color:cc.gridStrong}}}}});
   if(chartEff)chartEff.destroy();
-  chartEff=new Chart(document.getElementById('chartEff'),{type:'bar',data:{labels:effLabels,datasets:[{label:'Dmg / 100pts',data:effData,backgroundColor:'#d97706',borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#777',font:{size:11}}}},scales:{x:{ticks:{color:'#555'},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#999',font:{size:10}}}}}});
+  chartEff=new Chart(document.getElementById('chartEff'),{type:'bar',data:{labels:effLabels,datasets:[{label:'Dmg / 100pts',data:effData,backgroundColor:'#d97706',borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:cc.legend,font:{size:11}}}},scales:{x:{ticks:{color:cc.tickA},grid:{color:cc.grid}},y:{ticks:{color:cc.tickB,font:{size:10}}}}}});
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1285,8 +1329,8 @@ function runSimWithDef(def, leaderAbilitiesOverride){
   </div>`;
   if(mod.notes.length)h+=`<div class="info gold">&#11088; ${mod.notes.join(' &middot; ')}</div>`;
   if(d&&disp)h+=`<div class="info" style="background:rgba(192,57,43,.08);color:var(--text2)">&#9876; ${d.name} <span class="disp-pill ${dispCls(d.disp)}" style="margin-left:4px">${disp.label}</span></div>`;
-  if(atkFF)h+=`<div class="info red">&#9889; FIGHTS FIRST on attacker</div>`;
-  if(defFF)h+=`<div class="info amber">&#9888; Target has FIGHTS FIRST too</div>`;
+  if(atkFF)h+=`<div class="info red">&#9889; <span data-rule="FIGHTS_FIRST" style="cursor:help">FIGHTS FIRST</span> on attacker</div>`;
+  if(defFF)h+=`<div class="info amber">&#9888; Target has <span data-rule="FIGHTS_FIRST" style="cursor:help">FIGHTS FIRST</span> too</div>`;
   if(inCover)h+=`<div class="info green">Cover: -1 to hit ranged</div>`;
   if(hasHaz)h+=`<div class="info amber">&#9888; HAZARDOUS: roll 1-2 = mortal wound back</div>`;
   if(def.profile.kw&&def.profile.kw.length)h+=`<div style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:3px">${def.profile.kw.map(k=>`<span class="kw-tag" data-rule="${k}">${k}</span>`).join('')}</div>`;
@@ -1345,8 +1389,9 @@ let _simChartData=null;
 function renderSimChart(){
   if(!_simChartData||!document.getElementById('chartSim'))return;
   const{probR}=_simChartData;
+  const cc=chartColors();
   if(chartSim)chartSim.destroy();
-  chartSim=new Chart(document.getElementById('chartSim'),{type:'line',data:{labels:[1,2,3,4,5].map(n=>'Round '+n),datasets:[{label:'Kill probability',data:probR.map(p=>+(p*100).toFixed(1)),borderColor:'#c0392b',backgroundColor:'rgba(192,57,43,.15)',fill:true,tension:.3,pointBackgroundColor:'#c0392b',pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{color:'#555',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.04)'}},x:{ticks:{color:'#999',font:{size:10}},grid:{display:false}}}}});
+  chartSim=new Chart(document.getElementById('chartSim'),{type:'line',data:{labels:[1,2,3,4,5].map(n=>'Round '+n),datasets:[{label:'Kill probability',data:probR.map(p=>+(p*100).toFixed(1)),borderColor:'#c0392b',backgroundColor:'rgba(192,57,43,.15)',fill:true,tension:.3,pointBackgroundColor:'#c0392b',pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{color:cc.tickA,callback:v=>v+'%'},grid:{color:cc.grid}},x:{ticks:{color:cc.tickB,font:{size:10}},grid:{display:false}}}}});
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -2029,6 +2074,8 @@ function importLibrary(){
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
+  const themeBtn=document.getElementById('theme-toggle');
+  if(themeBtn)themeBtn.textContent=document.documentElement.dataset.theme==='light'?'🌙':'☀️';
   buildDetachmentsTab();
   // Reload persisted library from storage on startup
   _ensureLoaded().then(()=>{
