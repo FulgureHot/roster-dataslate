@@ -213,7 +213,6 @@ th{background:var(--bg3)}
   </div>
   <div class="btn-row">
     <button class="btn primary" onclick="parseRoster()">Analyze →</button>
-    <button class="btn" onclick="clearRosterInput()" title="Clear the text to paste the next list">🗑 Clear</button>
     <button class="btn" onclick="loadSample('ba')">Blood Angels — Death Comp</button>
     <button class="btn" onclick="loadSample('sm')">Space Marines — Drop Dread</button>
   </div>
@@ -610,14 +609,6 @@ function showTab(t){document.querySelectorAll('.tab').forEach(e=>e.classList.rem
   if(t==='live')renderLiveSimChart();
 }
 function loadSample(k){document.getElementById('roster-input').value=SAMPLES[k];}
-// Quick clear between pastes when analysing several lists back to back —
-// refocuses the textarea so the next paste lands immediately.
-function clearRosterInput(){
-  const ta=document.getElementById('roster-input');
-  ta.value='';
-  document.getElementById('err-parse').style.display='none';
-  ta.focus();
-}
 let R=null,chartSt=null,chartRadar=null,chartEff=null,chartSim=null,chartLiveSim=null;
 
 // Theme mode is 'light' | 'dark' | 'auto' (auto = follow the OS preference).
@@ -816,6 +807,10 @@ function parseRoster(){
   const{roster,error}=parseRosterText(raw);
   if(error){errEl.textContent=error;errEl.style.display='block';return;}
   R=roster;
+  // Success: clear the input so the next list can be pasted straight away
+  // (the parsed text lives on in R and in the Library entry). On error the
+  // text is kept — clearing it would destroy what the user needs to fix.
+  document.getElementById('roster-input').value='';
   try{
     buildUnits();buildStats();buildSim();showTab('units');
   }catch(e){

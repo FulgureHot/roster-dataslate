@@ -103,8 +103,8 @@ Testé (eval + mesures directes, viewport 1280 et 412px) : cycle de thème, Oath
 
 **Validé par l'utilisateur et mergé dans `main` le 2026-07-06** (fast-forward) → déployé. La branche `v2` peut être supprimée ou réutilisée pour la prochaine fournée.
 
-### Session 2026-07-07 — Bouton Clear (Paste Roster)
-Demande utilisateur : effacer rapidement le textarea pour enchaîner l'analyse de plusieurs listes. Bouton "🗑 Clear" ajouté dans la `.btn-row` de l'onglet Paste ([src/index.html](src/index.html)), nouvelle fonction `clearRosterInput()` (à côté de `loadSample()`) : vide le textarea, masque `err-parse`, redonne le focus au textarea pour coller directement. Testé : flux "analyser liste 1 → Clear → coller liste 2 → analyser" OK, les deux listes en Library. Directement sur `main` (changement trivial, pas de branche).
+### Session 2026-07-07 — Bouton Clear (Paste Roster), puis remplacé par l'effacement auto
+Demande utilisateur : effacer rapidement le textarea pour enchaîner l'analyse de plusieurs listes. Bouton "🗑 Clear" ajouté puis, sur retour utilisateur immédiat ("le bouton clear est même en trop"), **remplacé par un effacement automatique** : `parseRoster()` vide le textarea **uniquement en cas de parsing réussi** (en cas d'erreur le texte est conservé — l'effacer détruirait ce que l'utilisateur doit corriger). `clearRosterInput()` et le bouton supprimés. Testé : succès → textarea vidé + liste en Library ; entrée invalide → texte conservé + erreur affichée ; enchaînement de 2 listes OK. Directement sur `main`.
 
 ## Points d'attention / dette technique repérée (non traités, hors scope des demandes)
 
