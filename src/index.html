@@ -598,6 +598,35 @@ function mProf(name){const n=name.toLowerCase();for(const k of Object.keys(UDB))
 function mWeap(name){const n=name.toLowerCase().trim();if(WDB[n])return{...WDB[n],name,kw:[...WDB[n].kw]};for(const k of Object.keys(WDB))if(n.includes(k)||k.includes(n))return{...WDB[k],name,kw:[...WDB[k].kw]};return null;}
 function isFig(s){const l=s.toLowerCase();return["sergeant","marine","intercessor","eradicator","veteran","dreadnought","chaplain","vindicator","character","nob","warrior","terminator","guardian","lieutenant","impulsor","stormraven","librarian","captain","ancient","apothecary","techmarine","aggressor","inceptor","hellblaster","scout","infiltrator","incursor","eliminator","warboss","bigboss","painboy","weirdboy","bannernob","boyz","gretchin","nobz","meganobz","stormboyz","kommandos","tankbusta","burna","loota","gitz","squighog","warbiker","battlewagon","trukk","stompa","dread"].some(x=>l.includes(x));}
 function getModels(u){return(u.figures||[]).reduce((s,f)=>s+f.qty,0)||1;}
+
+// ── Derived game stats (Leadership / Objective Control) ──────────────────────
+// UDB entries don't carry Ld/OC; derive sensible 11th-ed defaults from tags so
+// Battle-shock and objective helpers work without a 120-entry data pass.
+// (profile.ld / profile.oc override the derivation if ever added.)
+function ldOf(p){ if(p&&p.ld)return p.ld; return 6; } // pass Battle-shock on 2D6 >= Ld; 6+ is the SM/BA/Ork norm
+function ocOf(p){
+  if(p&&typeof p.oc==='number')return p.oc;
+  const t=p&&p.tags||[];
+  if(t.includes('TRANSPORT'))return 0;
+  if(t.includes('VEHICLE'))return 3;
+  if(t.includes('BATTLELINE'))return 2;
+  return 1;
+}
+// Threat ranges for positioning decisions during the opponent's movement.
+function meleeThreat(u){const m=u.profile.m;return{min:m+2,avg:m+7,max:m+12};} // Move + 2D6 charge
+function shootThreat(u){
+  const rngs=getAllWpn(u).filter(w=>w&&w.s&&w.t==='rng').map(w=>w.r||0).filter(r=>r>0);
+  if(!rngs.length)return null;
+  return u.profile.m+Math.max(...rngs); // move-and-shoot reach
+}
+// Dice odds. chargeProb = P(2D6 >= dist); doubles as Battle-shock pass = P(2D6 >= Ld).
+function twoD6AtLeast(target){
+  if(target<=2)return 1; if(target>12)return 0;
+  let ways=0;for(let a=1;a<=6;a++)for(let b=1;b<=6;b++)if(a+b>=target)ways++;
+  return ways/36;
+}
+function chargeProb(dist){return twoD6AtLeast(dist);}
+function chargeProbReroll(dist){const p=twoD6AtLeast(dist);return 1-(1-p)*(1-p);} // re-roll the charge (both dice)
 function getAllWpn(u){const a=[...u.weapons];for(const f of u.figures||[])a.push(...(f.weapons||[]));const acc={};for(const w of a){if(!w)continue;if(acc[w.name])acc[w.name].qty=(acc[w.name].qty||1)+(w.qty||1);else acc[w.name]={...w,qty:w.qty||1};}return Object.values(acc);}
 function detectDetachment(name){const n=(name||'').toLowerCase();for(const key of Object.keys(DETACHMENT_DB))if(n.includes(key))return DETACHMENT_DB[key];return null;}
 function dispCls(d){return{TH:'disp-th',PF:'disp-pf',DI:'disp-di',RE:'disp-re',PA:'disp-pa'}[d]||'';}
@@ -1263,11 +1292,12 @@ function calcDmg(weapons,def,opts,mod={}){
   for(const w of weapons){
     if(!w||!w.s)continue;
     const kw=w.kw||[],qty=w.qty||1,isShooting=(w.t==='rng'||w.t==='cq'),isMelee=(w.t==='cc'||w.t==='cq');
-    const hitMod=((opts.inCover&&isShooting)?-1:0)+(isMelee?(mod.hitBonus_melee||0):0);
-    const hitTgt=Math.max(2,w.sk-hitMod);
-    let hitC=(7-hitTgt)/6;
+    if(opts.overwatch&&!isShooting)continue; // Overwatch: only ranged weapons fire
+    const hitMod=((opts.inCover&&isShooting)?-1:0)-(isShooting?(opts.rangedHitPenalty||0):0)+(isMelee?(mod.hitBonus_melee||0):0);
+    let hitC;
+    if(opts.overwatch&&isShooting){hitC=1/6;} // hits only on unmodified 6, no re-rolls
+    else{hitC=(7-Math.max(2,w.sk-hitMod))/6;if(mod.rerollHit1_all||(mod.rerollHit1_melee&&isMelee))hitC+=hitC/6;}
     if(kw.includes('SUSTAINED_HITS_1'))hitC+=(1/6)*(1/6);
-    if(mod.rerollHit1_all||(mod.rerollHit1_melee&&isMelee))hitC+=hitC/6;
     let attacks=(typeof w.a==='number'?w.a:3.5)*qty;
     if(isMelee&&mod.extraA_melee)attacks+=mod.extraA_melee*qty;
     if(kw.includes('BLAST')||kw.includes('CLEAVE_1'))attacks+=Math.floor((opts.defMod||1)/5);
@@ -1300,10 +1330,12 @@ function probKill(atk,def,rounds,opts,mod){
   const weapons=getAllWpn(atk).filter(w=>w&&w.s);let best=0;
   for(const w of weapons){
     const kw=w.kw||[],qty=w.qty||1,isShooting=(w.t==='rng'||w.t==='cq'),isMelee=(w.t==='cc'||w.t==='cq');
-    const hitMod=((opts.inCover&&isShooting)?-1:0)+(isMelee?(mod.hitBonus_melee||0):0);
-    let hitC=(7-Math.max(2,w.sk-hitMod))/6;
+    if(opts.overwatch&&!isShooting)continue;
+    const hitMod=((opts.inCover&&isShooting)?-1:0)-(isShooting?(opts.rangedHitPenalty||0):0)+(isMelee?(mod.hitBonus_melee||0):0);
+    let hitC;
+    if(opts.overwatch&&isShooting){hitC=1/6;}
+    else{hitC=(7-Math.max(2,w.sk-hitMod))/6;if(mod.rerollHit1_all||(mod.rerollHit1_melee&&isMelee))hitC+=hitC/6;}
     if(kw.includes('SUSTAINED_HITS_1'))hitC+=(1/6)*(1/6);
-    if(mod.rerollHit1_all||(mod.rerollHit1_melee&&isMelee))hitC+=hitC/6;
     const hasLethal=kw.includes('LETHAL_HITS')||mod.lethalHits_all||(mod.lethalHits_melee&&isMelee);
     const autoWound=hasLethal?(1/6)*hitC:0;
     let effS=w.s+(isMelee?(mod.extraS_melee||0):0);
@@ -1340,10 +1372,12 @@ function dmgDistribution(atk,defProfile,opts,mod){
   const weapons=getAllWpn(atk).filter(w=>w&&w.s);
   for(const w of weapons){
     const kw=w.kw||[],qty=w.qty||1,isShooting=(w.t==='rng'||w.t==='cq'),isMelee=(w.t==='cc'||w.t==='cq');
-    const hitMod=((opts.inCover&&isShooting)?-1:0)+(isMelee?(mod.hitBonus_melee||0):0);
-    let hitC=(7-Math.max(2,w.sk-hitMod))/6;
+    if(opts.overwatch&&!isShooting)continue;
+    const hitMod=((opts.inCover&&isShooting)?-1:0)-(isShooting?(opts.rangedHitPenalty||0):0)+(isMelee?(mod.hitBonus_melee||0):0);
+    let hitC;
+    if(opts.overwatch&&isShooting){hitC=1/6;}
+    else{hitC=(7-Math.max(2,w.sk-hitMod))/6;if(mod.rerollHit1_all||(mod.rerollHit1_melee&&isMelee))hitC+=hitC/6;}
     if(kw.includes('SUSTAINED_HITS_1'))hitC+=(1/6)*(1/6);
-    if(mod.rerollHit1_all||(mod.rerollHit1_melee&&isMelee))hitC+=hitC/6;
     const hasLethal=kw.includes('LETHAL_HITS')||mod.lethalHits_all||(mod.lethalHits_melee&&isMelee);
     const autoWound=hasLethal?(1/6)*hitC:0;
     let effS=w.s+(isMelee?(mod.extraS_melee||0):0);
@@ -2075,7 +2109,7 @@ function startLiveGame(){
   LIVE={
     myUnits:cloneUnitsForLive(myUnits), oppUnits:cloneUnitsForLive(oppUnits),
     myDetachment:myDetachment||null, oppDetachment,
-    round:1, myCP:1, oppCP:1
+    round:1, myCP:1, oppCP:1, myVP:0, oppVP:0
   };
   saveLive();
   buildLiveTab();
@@ -2115,6 +2149,14 @@ function liveAdjustCP(side,delta){
   LIVE[side]=Math.max(0,(LIVE[side]??1)+delta);
   saveLive();buildLiveTab();
 }
+function liveAdjustVP(side,delta){
+  LIVE[side]=Math.max(0,Math.min(100,(LIVE[side]??0)+delta));
+  saveLive();buildLiveTab();
+}
+function toggleTurnChecklist(){
+  const c=document.getElementById('turn-checklist');
+  if(c)c.style.display=c.style.display==='none'?'block':'none';
+}
 
 function buildLiveTab(){
   const el=document.getElementById('live-c');
@@ -2143,9 +2185,19 @@ function buildLiveTab(){
     const totalMax=maxModels*u.profile.w;
     const ratio=totalMax>0?totalLeft/totalMax:0;
     const hpColor=ratio>0.6?'#16a34a':ratio>0.3?'#d97706':'#c0392b';
+    // Below half strength → owes a Battle-shock test in the Command phase
+    const belowHalf=!dead&&models<=Math.floor(maxModels/2)&&maxModels>1;
+    const bsPass=Math.round(twoD6AtLeast(ldOf(u.profile))*100);
+    const oc=ocOf(u.profile),ocTotal=dead?0:oc*models;
+    const mThreat=meleeThreat(u),sThreat=shootThreat(u);
+    const threatStr=[
+      sThreat?`shoot ~${sThreat}"`:null,
+      `melee ~${mThreat.min}-${mThreat.max}"`
+    ].filter(Boolean).join(' · ');
     return `<div class="uc"${dead?' style="opacity:.5"':''}>
-      <div class="uh"><span class="un">${u.name}</span>${u.leadedBy?`<span class="badge bl">led by ${u.leadedBy.split(' ')[0]}</span>`:''}${dead?'<span class="badge bw">Destroyed</span>':''}</div>
+      <div class="uh"><span class="un">${u.name}</span>${u.leadedBy?`<span class="badge bl">led by ${u.leadedBy.split(' ')[0]}</span>`:''}${dead?'<span class="badge bw">Destroyed</span>':''}${belowHalf?`<span class="badge bbl" title="Below half strength — must take a Battle-shock test (2D6 ≥ Ld ${ldOf(u.profile)}+). ~${bsPass}% to pass.">&#9888; Battle-shock ${bsPass}%</span>`:''}</div>
       <div class="hp-track"><div class="hp-fill" style="width:${Math.round(ratio*100)}%;background:${hpColor}"></div></div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:6px">${threatStr} &middot; OC ${ocTotal} (${oc}/model)</div>
       <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--text3)">
         <div style="display:flex;align-items:center;gap:6px">Models
           <button class="btn stepper-btn" onclick="liveAdjustModels('${side}',${idx},-1)">&minus;</button>
@@ -2171,27 +2223,39 @@ function buildLiveTab(){
   // they're excluded from the attacker list (would always show 0 damage).
   const hasWeapons=u=>getAllWpn(u).some(w=>w&&w.s);
   const dueOptions=(prefix,units,attackerOnly)=>units.map((u,i)=>({u,i})).filter(({u})=>!attackerOnly||hasWeapons(u)).map(({u,i})=>`<option value="${prefix}:${i}">${prefix==='myUnits'?'Me':'Opp'}: ${u.name} (${u._live.modelsLeft}/${u._live.startModels})</option>`).join('');
+  const counter=(label,val,fn,color)=>`<div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:11px;color:var(--text3);min-width:44px">${label}</span>
+        <button class="btn stepper-btn" onclick="${fn}(-1)">&minus;</button>
+        <strong style="font-size:16px;min-width:26px;text-align:center;display:inline-block${color?';color:'+color:''}">${val}</strong>
+        <button class="btn stepper-btn" onclick="${fn}(1)">+</button>
+      </div>`;
   el.innerHTML=`
-    <div class="card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:12px;color:var(--text3)">Round</span>
-        <button class="btn stepper-btn" onclick="liveAdjustRound(-1)">&minus;</button>
-        <strong style="font-size:16px">${LIVE.round}</strong>
-        <button class="btn stepper-btn" onclick="liveAdjustRound(1)">+</button>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 16px">
+        ${counter('Round',LIVE.round,'liveAdjustRound')}
+        <button class="btn" onclick="toggleTurnChecklist()" title="Phase-by-phase turn reminder">&#9776; Turn checklist</button>
+        <button class="btn" onclick="endLiveGame()">End Game</button>
       </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:12px;color:var(--text3)">My CP</span>
-        <button class="btn stepper-btn" onclick="liveAdjustCP('myCP',-1)">&minus;</button>
-        <strong style="font-size:16px">${LIVE.myCP??1}</strong>
-        <button class="btn stepper-btn" onclick="liveAdjustCP('myCP',1)">+</button>
+      <div style="display:flex;gap:14px 22px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+        <div style="display:flex;gap:10px 16px;flex-wrap:wrap;align-items:center">
+          <span style="font-size:11px;font-weight:700;color:var(--c-blue)">ME</span>
+          ${counter('CP',LIVE.myCP??1,"(d=>liveAdjustCP('myCP',d))")}
+          ${counter('VP',LIVE.myVP??0,"(d=>liveAdjustVP('myVP',d))",'var(--c-green)')}
+        </div>
+        <div style="display:flex;gap:10px 16px;flex-wrap:wrap;align-items:center">
+          <span style="font-size:11px;font-weight:700;color:var(--c-red-lt)">OPP</span>
+          ${counter('CP',LIVE.oppCP??1,"(d=>liveAdjustCP('oppCP',d))")}
+          ${counter('VP',LIVE.oppVP??0,"(d=>liveAdjustVP('oppVP',d))",'var(--c-green)')}
+        </div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:12px;color:var(--text3)">Opp CP</span>
-        <button class="btn stepper-btn" onclick="liveAdjustCP('oppCP',-1)">&minus;</button>
-        <strong style="font-size:16px">${LIVE.oppCP??1}</strong>
-        <button class="btn stepper-btn" onclick="liveAdjustCP('oppCP',1)">+</button>
+      <div id="turn-checklist" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--text2);line-height:1.7">
+        <strong style="color:var(--text)">Command</strong> — gain 1 CP · Battle-shock tests for units below half · use Command-phase strats (Oath of Moment)<br>
+        <strong style="color:var(--text)">Movement</strong> — Move / Advance (+D6", no charge) / Fall Back · declare Reserves arriving<br>
+        <strong style="color:var(--text)">Shooting</strong> — pick targets, don't forget LETHAL/SUSTAINED/DEVASTATING · Overwatch is the opponent's option<br>
+        <strong style="color:var(--text)">Charge</strong> — declare, roll 2D6 ≥ distance · Heroic Intervention is the opponent's option<br>
+        <strong style="color:var(--text)">Fight</strong> — Fights First units, then alternate · pile in 3" / consolidate 3"<br>
+        <strong style="color:var(--text)">End</strong> — score secondaries · check primary at your Command phase
       </div>
-      <button class="btn" onclick="endLiveGame()">End Game</button>
     </div>
     <div class="live-armies-grid">
       <div><div class="section-header">My Army</div>${myCol}</div>
@@ -2237,14 +2301,34 @@ function buildLiveTab(){
         <label class="toggle-row"><input type="checkbox" id="live-o-twin"> Twin-Linked</label>
         <label class="toggle-row"><input type="checkbox" id="live-o-melta"> Melta (half range)</label>
         <label class="toggle-row"><input type="checkbox" id="live-o-aoc"> Armor of Contempt (-1 AP taken)</label>
+        <label class="toggle-row"><input type="checkbox" id="live-o-smoke"> Smokescreen (-1 to hit ranged)</label>
+        <label class="toggle-row"><input type="checkbox" id="live-o-overwatch"> Fire Overwatch (hit only on 6)</label>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn primary" onclick="runLiveDuel()">Calculate</button>
-        <button class="btn" onclick="runLiveTargetPriority()" title="Expected damage from the selected attacker against every enemy unit at once">&#127919; Target priority</button>
+        <button class="btn" onclick="runLiveTargetPriority()" title="Expected damage from the selected attacker against every enemy unit at once">&#127919; What can I kill?</button>
+        <button class="btn" onclick="runLiveIncomingThreats()" title="Which enemy units threaten the selected MY unit, worst first">&#128737; What threatens me?</button>
       </div>
       <div id="live-duel-result" style="margin-top:12px"></div>
+    </div>
+    <div class="card" style="margin-top:1rem">
+      <h3>Charge &amp; utility</h3>
+      <div class="f2">
+        <div class="fg"><label>Charge distance (inches)</label>
+          <select id="live-charge-dist" onchange="runChargeCalc()">${[...Array(11)].map((_,i)=>`<option value="${i+2}"${i+2===9?' selected':''}>${i+2}"</option>`).join('')}</select>
+        </div>
+        <div class="fg"><label>Grenade — target size</label>
+          <select id="live-grenade-t"><option value="4">T4 (Marine)</option><option value="7">T7 (light vehicle)</option><option value="10">T10 (heavy)</option></select>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="btn" onclick="runChargeCalc()">&#9876; Charge odds</button>
+        <button class="btn" onclick="runGrenadeCalc()" title="Grenade stratagem: 6 dice, each 4+ = 1 mortal wound">&#128163; Grenade strat</button>
+      </div>
+      <div id="live-util-result" style="font-size:12px;color:var(--text2)"></div>
     </div>`;
   buildLiveAddUnitOptions();
+  runChargeCalc();
 }
 
 function liveSwapDuel(){
@@ -2323,6 +2407,24 @@ function runLiveDuel(){
       h+=`<div class="pbr"><span style="min-width:54px;color:var(--text3)">&#8805; ${x}</span><div class="pbb"><div class="pbf" style="width:${pct}%;background:${pct>60?'#16a34a':pct>30?'#d97706':'#c0392b'}"></div></div><span class="pv">${pct}%</span>${marks.length?`<span style="font-size:10px;color:var(--c-amber);white-space:nowrap">&#9668; ${marks.join(' + ')}</span>`:''}</div>`;
     }
   }
+  // Trade evaluator: estimate the points exchanged in both directions. A rough
+  // guide against the classic beginner mistake of over-committing to a low-value
+  // target (fractionKilled × unit points, capped at the unit's full cost).
+  const defHasWeapons=getAllWpn(def).some(w=>w&&w.s);
+  if(atk.points||def.points){
+    const fracKilled=Math.min(1,r.expDmg/Math.max(1,totalWoundsLeft));
+    const ptsIDeal=Math.round(fracKilled*(def.points||0));
+    let backStr='';
+    if(defHasWeapons){
+      const rev=liveComputeAttack(def,atkSide==='myUnits'?'oppUnits':'myUnits',atk);
+      const atkTotalW=(Math.max(1,atk._live.modelsLeft)-1)*atk.profile.w+(atk._live.curWounds==null?atk.profile.w:atk._live.curWounds);
+      const fracBack=Math.min(1,rev.expDmg/Math.max(1,atkTotalW));
+      const ptsBack=Math.round(fracBack*(atk.points||0));
+      const verdict=ptsIDeal>ptsBack*1.3?['Favourable','var(--c-green)']:ptsBack>ptsIDeal*1.3?['Unfavourable','var(--c-red-lt)']:['Even','var(--c-amber)'];
+      backStr=` &nbsp;·&nbsp; they hit back for ~<strong>${ptsBack}</strong> pts &nbsp; <span style="color:${verdict[1]};font-weight:700">${verdict[0]} trade</span>`;
+    }
+    h+=`<div class="info" style="background:var(--overlay-1);color:var(--text2);margin-top:8px">&#9878; Trade estimate: you destroy ~<strong>${ptsIDeal}</strong> pts of ${def.name}${backStr}<br><span style="font-size:10px;color:var(--text3)">Rough — expected damage as a fraction of the unit, × its points. Reverse uses the same toggles.</span></div>`;
+  }
   h+=`<p style="font-size:12px;font-weight:600;margin:10px 0 8px;color:var(--text2)">Kill probability after N rounds</p>
   <div style="position:relative;height:110px;margin-bottom:8px"><canvas id="chartLiveSim"></canvas></div>`;
   [1,2,3,4,5].forEach((n,i)=>{const pct=Math.round(r.probR[i]*100);h+=`<div class="pbr"><span style="min-width:54px;color:var(--text3)">Round ${n}</span><div class="pbb"><div class="pbf" style="width:${pct}%;background:${cols[i]}"></div></div><span class="pv" style="color:${cols[i]}">${pct}%</span></div>`;});
@@ -2341,6 +2443,8 @@ function liveComputeAttack(atk,atkSide,def){
   const useMelta=document.getElementById('live-o-melta').checked;
   const useAoC=document.getElementById('live-o-aoc').checked;
   const oathTarget=document.getElementById('live-o-oath').checked;
+  const useSmoke=document.getElementById('live-o-smoke').checked;
+  const useOverwatch=document.getElementById('live-o-overwatch').checked;
   const defMod=Math.max(1,def._live.modelsLeft);
   const ctx={onCharge,oathTarget,waaagh:onCharge,bigMob:defMod>=20,entrenched:false,
     belowStarting:def._live.modelsLeft<def._live.startModels,
@@ -2349,7 +2453,7 @@ function liveComputeAttack(atk,atkSide,def){
     hasJumpPack:(atk.profile.tags||[]).includes('JUMP_PACK')};
   const mod=resolveModifiers(atk,liveDetachmentForSide(atkSide),ctx);
   const defProfile={...def.profile,w:def._live.curWounds==null?def.profile.w:def._live.curWounds};
-  const opts={inCover,fnp:useFNP?5:null,twin:useTwin,melta:useMelta,defMod,apReduction:useAoC?1:0};
+  const opts={inCover,fnp:useFNP?5:null,twin:useTwin,melta:useMelta,defMod,apReduction:useAoC?1:0,rangedHitPenalty:useSmoke?1:0,overwatch:useOverwatch};
   const weapons=getAllWpn(atk).filter(w=>w&&w.s);
   return{
     expDmg:calcDmg(weapons,defProfile,opts,mod),
@@ -2390,6 +2494,59 @@ function runLiveTargetPriority(){
   h+=`</table></div>`;
   document.getElementById('live-duel-result').innerHTML=h;
   _liveSimChartData=null;
+}
+
+// Inverse of target priority: which enemy units threaten the selected MY unit?
+// Uses each enemy's weapons against my unit's current profile.
+function runLiveIncomingThreats(){
+  const{unit:me,side:mySide}=liveResolveSel(document.getElementById('live-sel-atk').value);
+  const enemySide=mySide==='myUnits'?'oppUnits':'myUnits';
+  const enemies=LIVE[enemySide].map((u,i)=>({u,i})).filter(({u})=>u._live.modelsLeft>0&&getAllWpn(u).some(w=>w&&w.s));
+  if(!enemies.length){document.getElementById('live-duel-result').innerHTML='<div class="empty" style="padding:1rem">No armed enemy units to evaluate (quick-added units have no weapons — paste their list to include them here).</div>';return;}
+  const myTotalW=(Math.max(1,me._live.modelsLeft)-1)*me.profile.w+(me._live.curWounds==null?me.profile.w:me._live.curWounds);
+  const rows=enemies.map(({u})=>{
+    const r=liveComputeAttack(u,enemySide,me); // enemy attacks me
+    const pAtLeast=t=>{let p=0;for(let x=r.dist.length-1;x>=Math.min(t,DMG_DIST_CAP);x--)p+=r.dist[x]||0;return Math.min(1,p);};
+    return{name:u.name,models:u._live.modelsLeft,start:u._live.startModels,expDmg:r.expDmg,pWipeMe:pAtLeast(myTotalW)};
+  }).sort((a,b)=>b.expDmg-a.expDmg);
+  const worst=rows[0]?.expDmg||0;
+  let h=`<p style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text2)">&#128737; What threatens ${me.name} <span style="color:var(--text3);font-weight:400">(${myTotalW}W left · same toggles apply to the enemy attack)</span></p>
+  <div style="overflow-x:auto"><table class="compare-table" style="margin-top:0">
+    <tr><th>Enemy attacker</th><th>Models</th><th>Exp. dmg on me</th><th>Chance to wipe me</th></tr>`;
+  for(const row of rows){
+    h+=`<tr>
+      <td${row.expDmg===worst?' class="best-val"':''}>${row.name}</td>
+      <td>${row.models}/${row.start}</td>
+      <td${row.expDmg===worst?' class="best-val"':''}>${row.expDmg.toFixed(2)}</td>
+      <td>${Math.round(row.pWipeMe*100)}%</td>
+    </tr>`;
+  }
+  h+=`</table></div>`;
+  document.getElementById('live-duel-result').innerHTML=h;
+  _liveSimChartData=null;
+}
+
+// Charge odds: 2D6 >= distance, plus the value of a charge re-roll.
+function runChargeCalc(){
+  const el=document.getElementById('live-util-result');if(!el)return;
+  const d=parseInt(document.getElementById('live-charge-dist').value)||9;
+  const p=chargeProb(d),pr=chargeProbReroll(d);
+  el.innerHTML=`<div style="padding:8px 0"><strong>Charge ${d}"</strong> — needs 2D6 &ge; ${d}<br>
+    <span style="color:var(--c-green);font-weight:700;font-size:15px">${Math.round(p*100)}%</span> normal
+    &nbsp;·&nbsp; <span style="color:var(--c-blue);font-weight:700;font-size:15px">${Math.round(pr*100)}%</span> with a charge re-roll (1 CP)
+    ${d>=10?'<br><span style="font-size:10px;color:var(--c-amber)">⚠ Long charge — even a re-roll leaves it a coin-flip or worse.</span>':''}</div>`;
+}
+
+// Grenade stratagem: 6 dice, each 4+ = 1 mortal wound (mortals ignore saves).
+function runGrenadeCalc(){
+  const el=document.getElementById('live-util-result');if(!el)return;
+  const exp=6*0.5; // 3 mortal wounds on average
+  // Distribution of mortals = Binomial(6, 0.5)
+  let pAtLeast=k=>{let s=0;for(let j=k;j<=6;j++)s+=binomP(6,j,0.5);return s;};
+  el.innerHTML=`<div style="padding:8px 0"><strong>&#128163; Grenade stratagem</strong> — 6 dice, each 4+ = 1 mortal wound<br>
+    Expected: <strong style="color:var(--red)">${exp.toFixed(1)}</strong> mortal wounds
+    &nbsp;·&nbsp; ≥2: ${Math.round(pAtLeast(2)*100)}% &nbsp; ≥3: ${Math.round(pAtLeast(3)*100)}% &nbsp; ≥4: ${Math.round(pAtLeast(4)*100)}%
+    <br><span style="font-size:10px;color:var(--text3)">Mortal wounds ignore saves and Toughness — good against elites/characters.</span></div>`;
 }
 
 function renderLiveSimChart(){
