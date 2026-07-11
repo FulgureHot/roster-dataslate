@@ -4,13 +4,20 @@ Compagnon Warhammer 40K 11e édition (Space Marines, Blood Angels, Orks) : analy
 
 ## Fonctionnalités
 
-- **Paste Roster** — coller un export BattleScribe / Warhammer App, ou importer directement depuis une URL (Goonhammer, New Recruit, etc.)
-- **Units** — détail des unités parsées : profils, armes, mots-clés
-- **Statistics** — scores agrégés de la liste
-- **Detachments** — base de données des détachements SM/BA/Orks 11e édition (règles, dispositions de force, matrice de missions)
-- **Combat Sim** — simulateur de combat probabiliste (touche/blessure/sauvegarde/dégâts, probabilité de kill)
-- **Library** — bibliothèque de listes sauvegardées (`localStorage`), avec tri, comparaison, import/export JSON
-- **Live Action** — suivi d'une partie en direct : charge ta liste + colle celle de l'adversaire, suis les PV/modèles restants unité par unité au fil de la partie, et calcule les chances de dégâts en tenant compte de l'état réel (pas d'un profil plein PV)
+Deux modes :
+
+### 📋 Lists — préparation hors jeu
+- **Library** — coller un export BattleScribe / Warhammer App (ou importer par URL) ; les listes analysées rejoignent la bibliothèque (tri, comparaison par palier de points, notes, import/export JSON)
+- **Units / Statistics** — détail des unités (profils, armes, règles tappables) et scores agrégés de la liste
+- **Combat Sim** — simulateur théorique contre des profils de référence
+- **Detachments** — référentiel des détachements SM/BA/Orks 11e édition
+
+### ⚔ Battle — en partie
+- **Setup** — ta liste + la liste adverse (collée depuis WhatsApp/mail) en 3 étapes
+- **Plan** — toutes les confrontations calculées d'avance, dans les deux sens : meilleures cibles de chaque unité, menaces adverses, pression subie par tes unités ; un tap ouvre le duel détaillé
+- **Tracker** — PV/figurines restants (steppers + pavé de saisie rapide + micro en ligne), CP/VP/round, annulation, barres de vie, badges Battle-shock, portées de menace
+- **Duel** — distribution des dégâts ("chances de faire au moins X"), évaluation d'échange en points, probabilité de kill par round
+- **Tools** — probabilité de charge, grenade, checklist de tour
 
 Le parseur reconnaît le format texte du Warhammer App/BattleScribe et fait correspondre les noms d'unités/armes aux bases de données internes (`UDB`, `WDB`, `DETACHMENT_DB`, `LEADER_DB`) pour déduire les profils de combat et simuler les jets de dés.
 
