@@ -153,6 +153,11 @@ th{background:var(--bg3)}
 .army-score-grid{display:grid;grid-template-columns:1fr 1fr 150px;gap:16px;align-items:center}
 .live-armies-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:1rem}
 .unit-no{display:inline-block;flex-shrink:0;min-width:26px;text-align:center;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:700;background:var(--overlay-3);color:var(--text2);border:1px solid var(--border)}
+.plan-chips{display:flex;flex-wrap:wrap;gap:6px}
+.plan-chip{display:inline-flex;flex-direction:column;align-items:flex-start;gap:1px;padding:5px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font);text-align:left}
+.plan-chip .plan-chip-num{font-size:10px;font-weight:400;color:var(--text3)}
+.plan-chip.best{border-color:var(--red);background:rgba(192,57,43,.1);color:var(--text)}
+.plan-chip.best .plan-chip-num{color:var(--c-red-lt);font-weight:600}
 .setup-step{display:flex;gap:12px;margin-bottom:16px}
 .setup-no{flex-shrink:0;width:28px;height:28px;border-radius:50%;background:var(--red);color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
 .setup-body{flex:1;min-width:0}
@@ -201,6 +206,7 @@ th{background:var(--bg3)}
   <button class="tab" onclick="showTab('detachments')">Detachments</button>
 </div>
 <div class="tabs" id="subnav-battle" style="display:none">
+  <button class="tab" onclick="showTab('bplan')">🎯 Plan</button>
   <button class="tab" onclick="showTab('live')">⚔ Battle</button>
 </div>
 <div id="s-units" class="section"><div id="units-c"><div class="empty">Paste and analyze a roster first</div></div></div>
@@ -261,6 +267,7 @@ shooting for 1 CP.</div></div><div class="det-card"><div class="det-card-name"> 
   <div id="lib-c">  <div class="empty">No saved rosters yet — analyze a roster to add it to the library</div></div>
 </div>
 <div id="s-live" class="section"><div id="live-c">  <div class="empty">Loading…</div></div></div>
+<div id="s-bplan" class="section"><div id="bplan-c">  <div class="empty">No active battle</div></div></div>
 </div>
 <script>
 const SAMPLES={
@@ -644,7 +651,7 @@ function dispCls(d){return{TH:'disp-th',PF:'disp-pf',DI:'disp-di',RE:'disp-re',P
 // ── Two-mode navigation: Lists (out of game) / Battle (in game) ──────────────
 let MODE='lists';
 const TAB_ALIAS={paste:'library'}; // legacy id (Electron menu accelerator, old links)
-const TAB_MODE={library:'lists',units:'lists',stats:'lists',sim:'lists',detachments:'lists',live:'battle'};
+const TAB_MODE={library:'lists',units:'lists',stats:'lists',sim:'lists',detachments:'lists',live:'battle',bplan:'battle'};
 function applyMode(m){
   MODE=m;
   try{localStorage.setItem('40k_mode',m);}catch(e){}
@@ -655,7 +662,8 @@ function applyMode(m){
 }
 function showMode(m){
   applyMode(m);
-  showTab(m==='battle'?'live':'library');
+  // Battle mode: land on the Plan when a game is running, on the setup otherwise
+  showTab(m==='battle'?(LIVE?'bplan':'live'):'library');
 }
 function showTab(t){
   t=TAB_ALIAS[t]||t;
@@ -669,6 +677,7 @@ function showTab(t){
   if(t==='detachments')buildDetachmentsTab();
   if(t==='library')buildLibraryTab();
   if(t==='live')buildLiveTab();
+  if(t==='bplan')buildBattlePlan();
   // Charts created while their tab was hidden (display:none) measure 0x0 and a plain
   // .resize() doesn't reliably recover — recreate them now that the tab is visible.
   if(t==='stats')renderStatsCharts();
@@ -2513,17 +2522,7 @@ function buildLiveTab(){
         <div class="fg"><label>Attacker</label><select id="live-sel-atk">${dueOptions('myUnits',LIVE.myUnits,true)}${dueOptions('oppUnits',LIVE.oppUnits,true)}</select></div>
         <div class="fg"><label>Target <button class="btn" style="padding:1px 8px;font-size:11px;margin-left:6px" onclick="liveSwapDuel()" title="Swap attacker and target">&#8644; Swap</button></label><select id="live-sel-def">${dueOptions('oppUnits',LIVE.oppUnits)}${dueOptions('myUnits',LIVE.myUnits)}</select></div>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:10px">
-        <label class="toggle-row"><input type="checkbox" id="live-o-charge" checked> On Charge</label>
-        <label class="toggle-row"><input type="checkbox" id="live-o-oath"> Oath of Moment target</label>
-        <label class="toggle-row"><input type="checkbox" id="live-o-cov"> Cover</label>
-        <label class="toggle-row"><input type="checkbox" id="live-o-fnp"> FNP 5+</label>
-        <label class="toggle-row"><input type="checkbox" id="live-o-twin"> Twin-Linked</label>
-        <label class="toggle-row"><input type="checkbox" id="live-o-melta"> Melta (half range)</label>
-        <label class="toggle-row"><input type="checkbox" id="live-o-aoc"> Armor of Contempt (-1 AP taken)</label>
-        <label class="toggle-row"><input type="checkbox" id="live-o-smoke"> Smokescreen (-1 to hit ranged)</label>
-        <label class="toggle-row"><input type="checkbox" id="live-o-overwatch"> Fire Overwatch (hit only on 6)</label>
-      </div>
+      ${liveTogglesHtml()}
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn primary" onclick="runLiveDuel()">Calculate</button>
         <button class="btn" onclick="runLiveTargetPriority()" title="Expected damage from the selected attacker against every enemy unit at once">&#127919; What can I kill?</button>
@@ -2653,27 +2652,45 @@ function runLiveDuel(){
   renderLiveSimChart();
 }
 
-// Shared math for the Live duel and target-priority views: builds ctx/opts from
-// the duel toggles + the target's tracked state, and runs the combat engine.
+// ── Shared scenario toggles ───────────────────────────────────────────────────
+// One source of truth for the Battle Plan and the Duel views, persisted with
+// the game (a toggle you set while planning still applies in the duel).
+const LIVE_TOGGLE_DEFS=[
+  ['charge','On Charge'],['oath','Oath of Moment target'],['cover','Cover'],
+  ['fnp','FNP 5+'],['twin','Twin-Linked'],['melta','Melta (half range)'],
+  ['aoc','Armor of Contempt (-1 AP taken)'],['smoke','Smokescreen (-1 to hit ranged)'],
+  ['overwatch','Fire Overwatch (hit only on 6)']
+];
+function liveToggles(){
+  if(!LIVE.toggles)LIVE.toggles={charge:true,oath:false,cover:false,fnp:false,twin:false,melta:false,aoc:false,smoke:false,overwatch:false};
+  return LIVE.toggles;
+}
+function setLiveToggle(key,checked){
+  liveToggles()[key]=checked;
+  saveLive();
+  // Recompute whatever computed view is on screen
+  if(document.getElementById('s-bplan')?.classList.contains('active'))buildBattlePlan();
+}
+function liveTogglesHtml(){
+  const t=liveToggles();
+  return `<div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:10px">
+    ${LIVE_TOGGLE_DEFS.map(([k,label])=>`<label class="toggle-row"><input type="checkbox" onchange="setLiveToggle('${k}',this.checked)"${t[k]?' checked':''}> ${label}</label>`).join('')}
+  </div>`;
+}
+
+// Shared math for the Battle Plan and Duel views: builds ctx/opts from the
+// shared toggles + the target's tracked state, and runs the combat engine.
 function liveComputeAttack(atk,atkSide,def){
-  const onCharge=document.getElementById('live-o-charge').checked;
-  const inCover=document.getElementById('live-o-cov').checked;
-  const useFNP=document.getElementById('live-o-fnp').checked;
-  const useTwin=document.getElementById('live-o-twin').checked;
-  const useMelta=document.getElementById('live-o-melta').checked;
-  const useAoC=document.getElementById('live-o-aoc').checked;
-  const oathTarget=document.getElementById('live-o-oath').checked;
-  const useSmoke=document.getElementById('live-o-smoke').checked;
-  const useOverwatch=document.getElementById('live-o-overwatch').checked;
+  const t=liveToggles();
   const defMod=Math.max(1,def._live.modelsLeft);
-  const ctx={onCharge,oathTarget,waaagh:onCharge,bigMob:defMod>=20,entrenched:false,
+  const ctx={onCharge:t.charge,oathTarget:t.oath,waaagh:t.charge,bigMob:defMod>=20,entrenched:false,
     belowStarting:def._live.modelsLeft<def._live.startModels,
     belowHalf:def._live.modelsLeft<=Math.floor(def._live.startModels/2),
     isDeathCompany:(atk.profile.tags||[]).includes('DEATH_COMPANY'),
     hasJumpPack:(atk.profile.tags||[]).includes('JUMP_PACK')};
   const mod=resolveModifiers(atk,liveDetachmentForSide(atkSide),ctx);
   const defProfile={...def.profile,w:def._live.curWounds==null?def.profile.w:def._live.curWounds};
-  const opts={inCover,fnp:useFNP?5:null,twin:useTwin,melta:useMelta,defMod,apReduction:useAoC?1:0,rangedHitPenalty:useSmoke?1:0,overwatch:useOverwatch};
+  const opts={inCover:t.cover,fnp:t.fnp?5:null,twin:t.twin,melta:t.melta,defMod,apReduction:t.aoc?1:0,rangedHitPenalty:t.smoke?1:0,overwatch:t.overwatch};
   const weapons=getAllWpn(atk).filter(w=>w&&w.s);
   return{
     expDmg:calcDmg(weapons,defProfile,opts,mod),
@@ -2681,6 +2698,11 @@ function liveComputeAttack(atk,atkSide,def){
     dist:dmgDistribution(atk,defProfile,opts,mod),
     defProfile,defMod
   };
+}
+// P(total damage >= t) from a dmgDistribution() array
+function distAtLeast(dist,t){
+  let p=0;for(let x=dist.length-1;x>=Math.min(t,DMG_DIST_CAP);x--)p+=dist[x]||0;
+  return Math.min(1,p);
 }
 
 // One attacker vs EVERY living enemy unit at once, sorted by expected damage —
@@ -2695,8 +2717,7 @@ function runLiveTargetPriority(){
     const totalLeft=(u._live.modelsLeft-1)*u.profile.w+r.defProfile.w;
     // Both probabilities from the same all-weapons distribution, so a 1-model
     // unit shows identical wipe/kill-1 values instead of two divergent methods
-    const pAtLeast=t=>{let p=0;for(let x=r.dist.length-1;x>=Math.min(t,DMG_DIST_CAP);x--)p+=r.dist[x]||0;return Math.min(1,p);};
-    return{name:u.name,models:u._live.modelsLeft,start:u._live.startModels,expDmg:r.expDmg,pKill1:pAtLeast(r.defProfile.w),pWipe:pAtLeast(totalLeft)};
+    return{name:u.name,models:u._live.modelsLeft,start:u._live.startModels,expDmg:r.expDmg,pKill1:distAtLeast(r.dist,r.defProfile.w),pWipe:distAtLeast(r.dist,totalLeft)};
   }).sort((a,b)=>b.expDmg-a.expDmg);
   const bestDmg=rows[0]?.expDmg||0;
   let h=`<p style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text2)">&#127919; ${atk.name} vs all enemy units <span style="color:var(--text3);font-weight:400">(current state, same toggles as duel)</span></p>
@@ -2726,8 +2747,7 @@ function runLiveIncomingThreats(){
   const myTotalW=(Math.max(1,me._live.modelsLeft)-1)*me.profile.w+(me._live.curWounds==null?me.profile.w:me._live.curWounds);
   const rows=enemies.map(({u})=>{
     const r=liveComputeAttack(u,enemySide,me); // enemy attacks me
-    const pAtLeast=t=>{let p=0;for(let x=r.dist.length-1;x>=Math.min(t,DMG_DIST_CAP);x--)p+=r.dist[x]||0;return Math.min(1,p);};
-    return{name:u.name,models:u._live.modelsLeft,start:u._live.startModels,expDmg:r.expDmg,pWipeMe:pAtLeast(myTotalW)};
+    return{name:u.name,models:u._live.modelsLeft,start:u._live.startModels,expDmg:r.expDmg,pWipeMe:distAtLeast(r.dist,myTotalW)};
   }).sort((a,b)=>b.expDmg-a.expDmg);
   const worst=rows[0]?.expDmg||0;
   let h=`<p style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text2)">&#128737; What threatens ${me.name} <span style="color:var(--text3);font-weight:400">(${myTotalW}W left · same toggles apply to the enemy attack)</span></p>
@@ -2775,6 +2795,90 @@ function renderLiveSimChart(){
   const cc=chartColors();
   if(chartLiveSim)chartLiveSim.destroy();
   chartLiveSim=new Chart(document.getElementById('chartLiveSim'),{type:'line',data:{labels:[1,2,3,4,5].map(n=>'Round '+n),datasets:[{label:'Kill probability',data:probR.map(p=>+(p*100).toFixed(1)),borderColor:'#c0392b',backgroundColor:'rgba(192,57,43,.15)',fill:true,tension:.3,pointBackgroundColor:'#c0392b',pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{color:cc.tickA,callback:v=>v+'%'},grid:{color:cc.grid}},x:{ticks:{color:cc.tickB,font:{size:10}},grid:{display:false}}}}});
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BATTLE PLAN — the whole point of pasting both lists: every matchup computed
+// up front, no dropdowns. For each of my armed units, its best targets; for
+// each enemy armed unit, what it kills best of mine; plus incoming pressure
+// per unit of mine. Tap any target chip to open the full duel for that pair.
+// ══════════════════════════════════════════════════════════════════════════════
+function buildBattlePlan(){
+  const el=document.getElementById('bplan-c');
+  if(!LIVE){
+    el.innerHTML=`<div class="empty">No active battle — <button class="btn primary" onclick="showTab('live')">set one up</button></div>`;
+    return;
+  }
+  const armed=side=>LIVE[side].map((u,i)=>({u,i})).filter(({u})=>u._live.modelsLeft>0&&getAllWpn(u).some(w=>w&&w.s));
+  const alive=side=>LIVE[side].map((u,i)=>({u,i})).filter(({u})=>u._live.modelsLeft>0);
+  const totalWoundsLeft=u=>(u._live.modelsLeft-1)*u.profile.w+(u._live.curWounds==null?u.profile.w:u._live.curWounds);
+
+  // Every armed attacker vs every living defender, both directions at once
+  const evalPairs=(atkSide,defSide)=>armed(atkSide).map(({u:atk,i:ai})=>{
+    const targets=alive(defSide).map(({u:def,i:di})=>{
+      const r=liveComputeAttack(atk,atkSide,def);
+      return{di,def,expDmg:r.expDmg,pWipe:distAtLeast(r.dist,totalWoundsLeft(def)),pKill1:distAtLeast(r.dist,r.defProfile.w)};
+    }).sort((a,b)=>b.expDmg-a.expDmg);
+    return{ai,atk,targets};
+  });
+  const myRows=evalPairs('myUnits','oppUnits');
+  const oppRows=evalPairs('oppUnits','myUnits');
+
+  // Incoming pressure: per living unit of mine, summed expected damage from all enemy attackers
+  const incoming={};
+  for(const row of oppRows)for(const t of row.targets)incoming[t.di]=(incoming[t.di]||0)+t.expDmg;
+
+  const chip=(atkSide,ai,defSide,t,best)=>`<button class="plan-chip${best?' best':''}" onclick="openDuelPair('${atkSide}',${ai},'${defSide}',${t.di})" title="Open the full duel">
+      ${t.def.name}<span class="plan-chip-num">${t.expDmg.toFixed(1)} dmg &middot; ${Math.round(t.pWipe*100)}% wipe</span></button>`;
+
+  let h=`<div class="card">
+    <h3>Scenario toggles <span style="color:var(--text3);font-weight:400;text-transform:none">— apply to every number below and to the Duel view</span></h3>
+    ${liveTogglesHtml()}
+  </div>`;
+
+  h+=`<div class="section-header">&#127919; My units — best targets</div>`;
+  if(!myRows.length)h+=`<div class="empty" style="padding:1rem">No armed units left.</div>`;
+  for(const row of myRows){
+    h+=`<div class="uc">
+      <div class="uh"><span class="unit-no">U${liveUnitNumber('myUnits',row.ai)}</span><span class="un">${row.atk.name}</span><span style="font-size:10px;color:var(--text3)">${row.atk._live.modelsLeft}/${row.atk._live.startModels}</span></div>
+      <div class="plan-chips">${row.targets.slice(0,3).map((t,k)=>chip('myUnits',row.ai,'oppUnits',t,k===0)).join('')}</div>
+    </div>`;
+  }
+
+  h+=`<div class="section-header">&#128737; Enemy threats — what their units hunt</div>`;
+  if(!oppRows.length)h+=`<div class="empty" style="padding:1rem">No armed enemy units (quick-added units carry no weapons — paste their list to see their threat).</div>`;
+  for(const row of oppRows){
+    h+=`<div class="uc">
+      <div class="uh"><span class="unit-no">U${liveUnitNumber('oppUnits',row.ai)}</span><span class="un">${row.atk.name}</span><span style="font-size:10px;color:var(--text3)">${row.atk._live.modelsLeft}/${row.atk._live.startModels}</span></div>
+      <div class="plan-chips">${row.targets.slice(0,2).map((t,k)=>chip('oppUnits',row.ai,'myUnits',t,k===0)).join('')}</div>
+    </div>`;
+  }
+
+  const pressured=alive('myUnits').map(({u,i})=>({u,i,inc:incoming[i]||0,tw:totalWoundsLeft(u)}))
+    .sort((a,b)=>(b.inc/Math.max(1,b.tw))-(a.inc/Math.max(1,a.tw)));
+  if(pressured.length&&oppRows.length){
+    h+=`<div class="section-header">&#9888; Incoming pressure on my units <span style="color:var(--text3);font-weight:400">(sum of all enemy attacks, one phase each)</span></div>`;
+    for(const p of pressured){
+      const ratio=p.tw>0?p.inc/p.tw:0;
+      const color=ratio>=1?'#c0392b':ratio>=0.5?'#d97706':'#16a34a';
+      const label=ratio>=1?'likely dead if focused':ratio>=0.5?'at risk':'safe-ish';
+      h+=`<div class="pbr"><span style="min-width:150px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">U${liveUnitNumber('myUnits',p.i)} ${p.u.name}</span>
+        <div class="pbb"><div class="pbf" style="width:${Math.min(100,Math.round(ratio*100))}%;background:${color}"></div></div>
+        <span class="pv" style="color:${color};min-width:110px;text-align:right;font-size:10px">${p.inc.toFixed(1)} dmg / ${p.tw}W &middot; ${label}</span></div>`;
+    }
+  }
+  el.innerHTML=h;
+}
+
+// Jump from a Plan chip to the full duel with the pair preselected
+function openDuelPair(atkSide,ai,defSide,di){
+  showTab('live');
+  const atkSel=document.getElementById('live-sel-atk'),defSel=document.getElementById('live-sel-def');
+  if(!atkSel||!defSel)return;
+  atkSel.value=atkSide+':'+ai;
+  defSel.value=defSide+':'+di;
+  runLiveDuel();
+  document.getElementById('live-duel-result')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 
