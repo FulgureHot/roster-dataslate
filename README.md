@@ -1,6 +1,6 @@
-# 40K Roster Analyzer — Electron App
+# Roster Dataslate — Electron App
 
-Application desktop Windows/Mac/Linux pour analyser les listes Warhammer 40K 11e édition (Space Marines, Blood Angels, Orks).
+Compagnon Warhammer 40K 11e édition (Space Marines, Blood Angels, Orks) : analyse de listes hors jeu, et aide à la décision en partie. Desktop Windows/Mac/Linux + PWA mobile.
 
 ## Fonctionnalités
 
@@ -42,8 +42,8 @@ npm run build:win
 ```
 
 Le résultat est dans le dossier `dist/` :
-- `40K Roster Analyzer Setup 1.0.0.exe` — installateur NSIS (recommandé)
-- `40K Roster Analyzer 1.0.0.exe` — version portable (pas d'installation)
+- `Roster Dataslate Setup 1.0.0.exe` — installateur NSIS (recommandé)
+- `Roster Dataslate 1.0.0.exe` — version portable (pas d'installation)
 
 > **Note** : la compilation Windows depuis un Mac ou Linux nécessite Wine ou une CI.
 > Depuis un PC Windows, ça fonctionne directement.

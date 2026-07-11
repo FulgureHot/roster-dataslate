@@ -1,7 +1,7 @@
 // Cache-first service worker for offline use (prepare list at home, use it
 // in-store/tournament with no network). Only registers over HTTPS/localhost —
 // see the registration guard in index.html for the Electron file:// skip.
-const CACHE_NAME = '40k-analyzer-v1';
+const CACHE_NAME = 'roster-dataslate-v1';
 const ASSETS = [
   './',
   './index.html',

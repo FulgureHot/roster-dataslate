@@ -1,7 +1,7 @@
 {
-  "name": "40K Roster Analyzer",
-  "short_name": "40K Analyzer",
-  "description": "Warhammer 40K Roster Analyzer — 11th Edition",
+  "name": "Roster Dataslate",
+  "short_name": "Dataslate",
+  "description": "Roster Dataslate — Warhammer 40K 11th Edition companion",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

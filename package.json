@@ -1,9 +1,9 @@
 {
-  "name": "40k-roster-analyzer",
+  "name": "roster-dataslate",
   "version": "1.0.0",
-  "description": "Warhammer 40K Roster Analyzer — 11th Edition",
+  "description": "Roster Dataslate — Warhammer 40K 11th Edition companion",
   "main": "main.js",
-  "author": "40K Analyzer",
+  "author": "Roster Dataslate",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
@@ -19,8 +19,8 @@
   },
   "build": {
     "appId": "com.40k.roster-analyzer",
-    "productName": "40K Roster Analyzer",
-    "copyright": "40K Roster Analyzer 2026",
+    "productName": "Roster Dataslate",
+    "copyright": "Roster Dataslate 2026",
     "directories": {
       "output": "dist"
     },
@@ -47,7 +47,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "40K Roster Analyzer"
+      "shortcutName": "Roster Dataslate"
     },
     "mac": {
       "target": "dmg",

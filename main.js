@@ -10,7 +10,7 @@ function createWindow() {
     height: 860,
     minWidth: 800,
     minHeight: 600,
-    title: '40K Roster Analyzer — 11th Edition',
+    title: 'Roster Dataslate — 11th Edition',
     icon: path.join(__dirname, 'assets', 'icon.png'),
     backgroundColor: '#0f0f0f',
     webPreferences: {
