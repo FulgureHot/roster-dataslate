@@ -253,6 +253,7 @@ shooting for 1 CP.</div></div><div class="det-card"><div class="det-card-name"> 
     <div class="err" id="err-parse"></div>
     <div class="btn-row">
       <button class="btn primary" onclick="parseRoster()">Analyze →</button>
+      <button class="btn" onclick="clearRosterInput()" title="Clear the text to paste a different list">🗑 Clear</button>
       <button class="btn" onclick="loadSample('ba')">Blood Angels — Death Comp</button>
       <button class="btn" onclick="loadSample('sm')">Space Marines — Drop Dread</button>
     </div>
@@ -554,7 +555,13 @@ const WDB={
   "auto bolt rifle":{t:"rng",r:24,a:3,sk:3,s:4,ap:0,d:1,kw:["ASSAULT"]},
   "stalker bolt rifle":{t:"rng",r:36,a:1,sk:3,s:4,ap:-2,d:2,kw:["HEAVY"]},
   "plasma incinerator":{t:"rng",r:24,a:2,sk:3,s:8,ap:-3,d:2,kw:["HAZARDOUS"]},
-  "macro plasma incinerator":{t:"rng",r:24,a:2,sk:3,s:9,ap:-4,d:2,kw:["HAZARDOUS"]}
+  "macro plasma incinerator":{t:"rng",r:24,a:2,sk:3,s:9,ap:-4,d:2,kw:["HAZARDOUS"]},
+  "master-crafted power weapon":{t:"cc",r:0,a:4,sk:3,s:5,ap:-2,d:2,kw:[]},
+  "power weapon":{t:"cc",r:0,a:2,sk:3,s:5,ap:-2,d:1,kw:[]},
+  "blood talons":{t:"cc",r:0,a:8,sk:3,s:8,ap:-2,d:2,kw:["SUSTAINED_HITS_1"]},
+  "hunter-killer missile":{t:"rng",r:48,a:1,sk:3,s:14,ap:-3,d:6,kw:[]},
+  "lascannon":{t:"rng",r:48,a:1,sk:3,s:12,ap:-3,d:5,kw:[]},
+  "predator twin lascannon":{t:"rng",r:48,a:2,sk:3,s:12,ap:-3,d:5,kw:["TWIN_LINKED"]}
 };
 
 const LEADER_DB=[
@@ -754,43 +761,152 @@ const SECTION_MAP={'BATTLELINE':'battleline','CHARACTERS':'character','DEDICATED
 // ══════════════════════════════════════════════════════════════════════════════
 // Pure parser — no DOM/side effects. Returns {roster} or {error}. Shared by
 // parseRoster() (the "my list" flow) and the Live Action opponent-list flow.
+// ── New Recruit export format ────────────────────────────────────────────────
+// New Recruit wraps the list in a "+++...+" metadata banner (FACTION KEYWORD /
+// DETACHMENT / TOTAL ARMY POINTS) and writes each unit as "Nx Name (N pts):
+// weapon, weapon" — points-and-weapons on ONE line, unlike the Warhammer App/
+// BattleScribe export this parser was originally built for (name+points alone,
+// weapons as indented bullets below). Detected and normalised into that same
+// bulleted shape before falling into the shared unit-parsing loop below, so
+// the rest of parseRosterText never needs to know two formats exist.
+function isNewRecruitFormat(raw){
+  return /^\+{5,}\s*$/m.test(raw) && /^\+\s*FACTION KEYWORD:/im.test(raw);
+}
+// A trailing "N with A, B" clause means all N models of the current figure
+// carry EVERY listed weapon — expand to one "Nx Weapon" line per weapon.
+function expandWeaponList(text){
+  const whole=text.trim();
+  const withM=whole.match(/^(\d+)\s+with\s+(.+)$/i);
+  if(withM)return withM[2].split(',').map(w=>w.trim()).filter(Boolean).map(w=>`• ${withM[1]}x ${w}`);
+  // Otherwise a plain comma list of independent items (weapons, or "Warlord")
+  const out=[];
+  for(const seg of whole.split(',').map(s=>s.trim()).filter(Boolean)){
+    const m=seg.match(/^(\d+)\s+with\s+(.+)$/i);
+    if(m)out.push(...m[2].split(',').map(w=>w.trim()).filter(Boolean).map(w=>`• ${m[1]}x ${w}`));
+    else if(/^warlord$/i.test(seg))out.push('• Warlord');
+    else if(/^\d+x\s+/i.test(seg))out.push('• '+seg);
+    else out.push('• '+seg);
+  }
+  return out;
+}
+function normalizeNewRecruit(raw){
+  const lines=raw.split('\n');
+  const bannerIdx=[];
+  lines.forEach((l,i)=>{if(/^\+{5,}\s*$/.test(l.trim()))bannerIdx.push(i);});
+  const headerEnd=bannerIdx.length>=2?bannerIdx[1]:(bannerIdx[0]??-1);
+  const headerText=lines.slice(0,headerEnd+1).join('\n');
+  const bodyLines=lines.slice(headerEnd+1);
+
+  const factionM=headerText.match(/^\+\s*FACTION KEYWORD:\s*(.+)$/im);
+  const detM=headerText.match(/^\+\s*DETACHMENT:\s*(.+)$/im);
+  const ptsM=headerText.match(/^\+\s*TOTAL ARMY POINTS:\s*(\d[\d.,]*)\s*pts?\.?/im);
+
+  const factionChain=(factionM?factionM[1]:'').split(/\s*-\s*/).map(s=>s.trim()).filter(Boolean);
+  const subfaction=factionChain[factionChain.length-1]||'';
+  const faction=factionChain.length>1?factionChain[factionChain.length-2]:(factionChain[0]||'');
+  const detachment=(detM?detM[1]:'').trim();
+  const points=ptsM?parseInt(ptsM[1].replace(/[.,]/g,'')):0;
+
+  // Body lines: strip "CharN:"/"UnitN:" reference labels, then reshape each
+  // unit/figure declaration (+ its optional inline weapon list) into the
+  // bulleted "Nx Name" / "• Weapon" shape the rest of the parser expects.
+  //
+  // Standalone "N with A, B" lines (no "• Nx Figurename" wrapper — e.g. Death
+  // Company Marines listing 5 different wargear subsets directly under the
+  // unit header) need special care: without a wrapping figure, getModels()
+  // would fall back to counting the unit as 1 model, undercounting wounds/
+  // mass for the whole unit. Buffer them per-unit and emit ONE synthetic
+  // figure ("• {total}x {UnitName}") covering all of them once the unit ends.
+  const out=[];
+  let curUnitName=null, curHasFigure=false, loadout=null;
+  function flushLoadout(){
+    if(loadout&&loadout.total>0){
+      out.push(`• ${loadout.total}x ${curUnitName}`);
+      for(const[w,q] of loadout.weapons)out.push(`• ${q}x ${w}`);
+    }
+    loadout=null;
+  }
+  for(let raw2 of bodyLines){
+    let line=raw2.trim();
+    if(!line)continue;
+    line=line.replace(/^(?:Char|Unit)\d+:\s*/i,'');
+
+    let m=line.match(/^(\d+)\s+with\s+(.+)$/i); // standalone loadout line, no figure wrapper
+    if(m){
+      if(curHasFigure){ for(const w of m[2].split(',').map(s=>s.trim()).filter(Boolean))out.push(`• ${m[1]}x ${w}`); continue; }
+      if(!loadout)loadout={total:0,weapons:new Map()};
+      loadout.total+=(+m[1]);
+      for(const w of m[2].split(',').map(s=>s.trim()).filter(Boolean))loadout.weapons.set(w,(loadout.weapons.get(w)||0)+(+m[1]));
+      continue;
+    }
+
+    m=line.match(/^•\s*(\d+)x\s+(.+?)(?:\s*:\s*(.+))?$/i); // bulleted figure, optional inline weapons
+    if(m){ flushLoadout(); curHasFigure=true; out.push(`• ${m[1]}x ${m[2].trim()}`); if(m[3])out.push(...expandWeaponList(m[3])); continue; }
+
+    m=line.match(/^(\d+)x\s+(.+?)\s*\((\d+[\d.,]*)\s*pts?\.?\)(?:\s*:\s*(.+))?$/i); // unit header
+    if(m){
+      flushLoadout(); curUnitName=m[2].trim(); curHasFigure=false;
+      out.push(`${curUnitName} (${m[3].replace(/[.,]/g,'')} points)`);
+      if(m[4])out.push(...expandWeaponList(m[4]));
+      continue;
+    }
+
+    out.push(line);
+  }
+  flushLoadout();
+  return{faction,subfaction,detachment,points,bodyLines:out};
+}
+
 function parseRosterText(raw){
   if(!raw||!raw.trim())return{error:'Paste a roster first.'};
 
-  // ── Normalise input ────────────────────────────────────────────────────────
-  let src = raw.trim()
-    // European thousands separator: "1.000 Points" → "1000 Points"
-    .replace(/\((\d+)\.(\d{3})\s*[Pp]ts\.?\)/g, '($1$2 pts)')
-    .replace(/\((\d+)\.(\d{3})\s*[Pp]oints\)/g, '($1$2 Points)')
-    // Normalise "pts" → "points" for uniform matching
-    .replace(/\((\d+)\s*pts\.?\)/gi, '($1 points)')
-    // Normalise ◦ → •
-    .replace(/◦/g, '•')
-    // Normalise "Unit N" → "Attached Unit N" (bare "Unit 1", "Unit 2"...)
-    .replace(/^Unit (\d+)\s*$/gm, 'Attached Unit $1')
-    // Normalise "Other Units:" → "OTHER DATASHEETS"
-    .replace(/^Other Units:\s*$/gmi, 'OTHER DATASHEETS')
-    // Normalise "Bodyguard (Battleline)" → "Bodyguard"
-    .replace(/Bodyguard\s*\([^)]+\)/gi, 'Bodyguard');
-
-  const lines = src.split('\n');
   const roster={name:'',faction:'',subfaction:'',detachment:'',detachmentObj:null,points:0,units:[]};
-  let hi=0;
+  let lines;
 
-  // Line 0: roster name
-  roster.name=(lines[hi]?.trim()||'Roster').replace(/\s*\(\d[\d.,]*\s*(?:points?|pts\.?)\)\s*$/i,'').trim();
-  const pm=lines[hi]?.match(/\((\d[\d.,]*)\s*(?:points?|pts\.?)\)/i);
-  if(pm) roster.points=parseInt(pm[1].replace(/[.,]/g,''));
-  roster.faction=lines[++hi]?.trim()||'';
-  roster.subfaction=lines[++hi]?.trim()||'';
+  if(isNewRecruitFormat(raw)){
+    const nr=normalizeNewRecruit(raw);
+    roster.faction=nr.faction;
+    roster.subfaction=nr.subfaction;
+    roster.detachment=nr.detachment;
+    roster.detachmentObj=detectDetachment(nr.detachment);
+    roster.points=nr.points;
+    roster.name=`${nr.subfaction||nr.faction||'Roster'} (${nr.points} points)`;
+    lines=nr.bodyLines;
+  }else{
+    // ── Normalise input ──────────────────────────────────────────────────────
+    let src = raw.trim()
+      // European thousands separator: "1.000 Points" → "1000 Points"
+      .replace(/\((\d+)\.(\d{3})\s*[Pp]ts\.?\)/g, '($1$2 pts)')
+      .replace(/\((\d+)\.(\d{3})\s*[Pp]oints\)/g, '($1$2 Points)')
+      // Normalise "pts" → "points" for uniform matching
+      .replace(/\((\d+)\s*pts\.?\)/gi, '($1 points)')
+      // Normalise ◦ → •
+      .replace(/◦/g, '•')
+      // Normalise "Unit N" → "Attached Unit N" (bare "Unit 1", "Unit 2"...)
+      .replace(/^Unit (\d+)\s*$/gm, 'Attached Unit $1')
+      // Normalise "Other Units:" → "OTHER DATASHEETS"
+      .replace(/^Other Units:\s*$/gmi, 'OTHER DATASHEETS')
+      // Normalise "Bodyguard (Battleline)" → "Bodyguard"
+      .replace(/Bodyguard\s*\([^)]+\)/gi, 'Bodyguard');
 
-  // Find detachment line
-  let di=hi+1;
-  while(di<lines.length&&!lines[di]?.trim()) di++;
-  if(SIZE_KW.test(lines[di]?.trim()||'')) di++;
-  while(di<lines.length&&!lines[di]?.trim()) di++;
-  roster.detachment=lines[di]?.trim()||'';
-  roster.detachmentObj=detectDetachment(roster.detachment);
+    lines = src.split('\n');
+    let hi=0;
+
+    // Line 0: roster name
+    roster.name=(lines[hi]?.trim()||'Roster').replace(/\s*\(\d[\d.,]*\s*(?:points?|pts\.?)\)\s*$/i,'').trim();
+    const pm=lines[hi]?.match(/\((\d[\d.,]*)\s*(?:points?|pts\.?)\)/i);
+    if(pm) roster.points=parseInt(pm[1].replace(/[.,]/g,''));
+    roster.faction=lines[++hi]?.trim()||'';
+    roster.subfaction=lines[++hi]?.trim()||'';
+
+    // Find detachment line
+    let di=hi+1;
+    while(di<lines.length&&!lines[di]?.trim()) di++;
+    if(SIZE_KW.test(lines[di]?.trim()||'')) di++;
+    while(di<lines.length&&!lines[di]?.trim()) di++;
+    roster.detachment=lines[di]?.trim()||'';
+    roster.detachmentObj=detectDetachment(roster.detachment);
+  }
 
   // ── Detect format ──────────────────────────────────────────────────────────
   const hasPerUnitPoints = lines.some(l=>{
@@ -909,6 +1025,14 @@ function parseRosterText(raw){
 
   roster.units=units;
   return{roster};
+}
+
+// Manual clear when a failed parse leaves text in the box that the user
+// wants to abandon rather than fix (auto-clear on success already handles
+// the happy path — see parseRoster below).
+function clearRosterInput(){
+  document.getElementById('roster-input').value='';
+  document.getElementById('err-parse').style.display='none';
 }
 
 function parseRoster(){
@@ -1183,7 +1307,10 @@ function buildStats(){
   const mobilityScore=Math.min(10,+(wtdMove/2).toFixed(1));
   const saveEff=us.reduce((s,u)=>{const svE=(7-u.profile.sv)/6+(u.profile.inv?((7-u.profile.inv)/6)*0.3:0);return s+svE*u.profile.w*getModels(u);},0);
   const durabScore=Math.min(10,+(saveEff/totPts*80).toFixed(1));
-  const massScore=Math.min(10,+(totMod/3).toFixed(1));
+  // Models per 100pts, not raw model count — otherwise bigger games (or just
+  // more units) always score max regardless of army "horde-ness", and any
+  // ~30+ model list (common at 1000-2000pts) pins to 10/10 either way.
+  const massScore=Math.min(10,+(totMod*100/Math.max(1,totPts)).toFixed(1));
   const firepowerScore=Math.min(10,+(totalDmg/4).toFixed(1));
   const meleeWpn=us.reduce((s,u)=>s+getAllWpn(u).filter(w=>w&&w.s&&w.t==='cc').length,0);
   const rangedWpn=us.reduce((s,u)=>s+getAllWpn(u).filter(w=>w&&w.s&&(w.t==='rng'||w.t==='cq')).length,0);
@@ -1224,7 +1351,7 @@ function buildStats(){
         <div style="font-size:10px;color:var(--text3);margin-bottom:3px;margin-top:8px">Mobility <span style="color:var(--text2)">${mobilityScore}/10</span></div>${scoreBar(mobilityScore,'#2563eb')}
       </div>
       <div>
-        <div style="font-size:10px;color:var(--text3);margin-bottom:3px">Model mass <span style="color:var(--text2)">${massScore}/10</span></div>${scoreBar(massScore,'#16a34a')}
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px" title="Models per 100pts — board presence relative to points spent, not a raw headcount">Model density <span style="color:var(--text2)">${massScore}/10</span> <span style="color:var(--text3)">(${totMod} models)</span></div>${scoreBar(massScore,'#16a34a')}
         <div style="font-size:10px;color:var(--text3);margin-bottom:3px;margin-top:8px">Consistency <span style="color:var(--text2)">${consistencyScore}/10</span></div>${scoreBar(consistencyScore,'#d97706')}
         <div style="font-size:10px;color:var(--text3);margin-bottom:3px;margin-top:8px">Special rules <span style="color:var(--text2)">${specialScore}/10</span></div>${scoreBar(specialScore,'#db2777')}
       </div>
@@ -1823,7 +1950,7 @@ function computeRosterSnapshot(roster){
   const saveEff = us.reduce((s,u)=>{const svE=(7-u.profile.sv)/6+(u.profile.inv?((7-u.profile.inv)/6)*0.3:0);return s+svE*u.profile.w*getModels(u);},0);
   const mobilityScore    = Math.min(10,+(wtdMove/2).toFixed(1));
   const durabScore       = Math.min(10,+(saveEff/totPts*80).toFixed(1));
-  const massScore        = Math.min(10,+(totMod/3).toFixed(1));
+  const massScore        = Math.min(10,+(totMod*100/Math.max(1,totPts)).toFixed(1));
   const firepowerScore   = Math.min(10,+(totalDmg/4).toFixed(1));
   const notableCount     = us.reduce((s,u)=>s+((u.profile.sp||[]).filter(k=>['FIGHTS_FIRST','LETHAL_HITS','DEVASTATING_WOUNDS','TWIN_LINKED','BLAST','INFILTRATE','STEALTH'].some(n=>k.includes(n))).length),0);
   const specialScore     = Math.min(10,+(notableCount*1.5).toFixed(1));
@@ -2041,7 +2168,7 @@ function buildLibraryTab(){
         {label:'Firepower', val:sc.firepower, color:'#c0392b'},
         {label:'Durability',val:sc.durability,color:'#7c3aed'},
         {label:'Mobility',  val:sc.mobility,  color:'#2563eb'},
-        {label:'Mass',      val:sc.mass,      color:'#16a34a'},
+        {label:'Density',   val:sc.mass,      color:'#16a34a'},
         {label:'Consist.',  val:sc.consistency,color:'#d97706'},
         {label:'Special',   val:sc.special,   color:'#db2777'},
       ];
@@ -2105,7 +2232,7 @@ function buildLibraryTab(){
       <table class="compare-table">
         <tr>
           <th>Roster</th><th>Score</th><th>Firepower</th><th>Durability</th><th>Mobility</th>
-          <th>Mass</th><th>Consistency</th><th>Special</th>
+          <th title="Models per 100pts">Density</th><th>Consistency</th><th>Special</th>
           <th>Wounds</th><th>Models</th><th>Move"</th><th>Dmg</th><th>Profile</th>
         </tr>`;
       for(const e of entries){
