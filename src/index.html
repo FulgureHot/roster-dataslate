@@ -919,6 +919,9 @@ function parseRosterText(raw){
   });
 
   const units=[];let sec='other',ag=null,cu=null,cf=null,agCounter=0;
+  const unknownWeapons=new Set(); // names that matched no WDB entry — silently dropped otherwise
+  // Known non-weapon wargear: absent from WDB on purpose, don't warn about it
+  const NON_WEAPON_GEAR=/shield dome|jump pack|grav-chute|teleport homer|auspex|banner|icon of|ammo runt|grot oiler/i;
   function flushF(){if(cf&&cu)cu.figures.push(cf);cf=null;}
   function flushU(){flushF();if(cu)units.push(cu);cu=null;}
 
@@ -993,7 +996,7 @@ function parseRosterText(raw){
     if(fm){
       const qty=parseInt(fm[1]),fn=fm[2].trim();
       if(isFig(fn)){flushF();cf={name:fn,qty,profile:mProf(fn),weapons:[]};}
-      else{const w=mWeap(fn);if(w){w.qty=qty;if(cf)cf.weapons.push(w);else cu.weapons.push(w);}}
+      else{const w=mWeap(fn);if(w){w.qty=qty;if(cf)cf.weapons.push(w);else cu.weapons.push(w);}else if(!NON_WEAPON_GEAR.test(fn))unknownWeapons.add(fn);}
       continue;
     }
 
@@ -1003,11 +1006,22 @@ function parseRosterText(raw){
       if(/^(Attached as|Warlord|Enhancement)/i.test(bare)) continue;
       const w=mWeap(bare);
       if(w){w.qty=1;if(cf)cf.weapons.push(w);else cu.weapons.push(w);}
+      else if(!isFig(bare)&&!NON_WEAPON_GEAR.test(bare))unknownWeapons.add(bare);
     }
   }
   flushU();
 
   if(!units.length)return{error:'No units recognised. Check format or paste manually.'};
+
+  // ── Sanity warnings (shown in Units, non-blocking) ───────────────────────
+  roster.warnings=[];
+  const sumPts=units.reduce((s,u)=>s+u.points,0);
+  if(roster.points>0&&sumPts!==roster.points)
+    roster.warnings.push(`Unit costs add up to <strong>${sumPts}pts</strong> but the list declares <strong>${roster.points}pts</strong> — a unit or its cost may not have been read.`);
+  if(!units.some(u=>u.isWarlord))
+    roster.warnings.push('No Warlord detected in this list.');
+  if(unknownWeapons.size)
+    roster.warnings.push(`Weapons unknown to the simulator (ignored in damage maths): ${[...unknownWeapons].join(', ')}.`);
 
   // ── Leader → bodyguard links ─────────────────────────────────────────────
   const agMap={};
@@ -1209,6 +1223,12 @@ function buildUnits(){
   const secs=[{k:'attached',l:'Attached Units'},{k:'character',l:'Characters'},{k:'battleline',l:'Battleline'},{k:'transport',l:'Dedicated Transports'},{k:'other',l:'Other Datasheets'}];
   const det=(R.detachment||'').split('(')[0].trim(),d=R.detachmentObj;
   let h=`<div class="sgrid"><div class="sc"><div class="l">Faction</div><div class="v" style="font-size:14px;color:var(--red)">${R.subfaction||R.faction}</div><div class="s">${R.faction}</div></div><div class="sc"><div class="l">Points used</div><div class="v">${R.units.reduce((s,u)=>s+u.points,0)}</div><div class="s">of ${R.points||'?'}</div></div><div class="sc"><div class="l">Units</div><div class="v">${R.units.length}</div></div><div class="sc"><div class="l">Detachment</div><div class="v" style="font-size:11px">${det}</div></div></div>`;
+  if(R.warnings&&R.warnings.length){
+    h+=`<div style="margin-bottom:10px;padding:8px 12px;border-left:3px solid var(--c-amber);background:var(--overlay-1);border-radius:6px;font-size:11px;color:var(--text2)">
+      <strong style="color:var(--c-amber)">&#9888; Check your list</strong>
+      <ul style="margin:4px 0 0 16px;line-height:1.6">${R.warnings.map(w=>`<li>${w}</li>`).join('')}</ul>
+    </div>`;
+  }
   if(d){const disp=DISPOSITIONS[d.disp];h+=`<div class="det-banner"><div class="det-name">&#9876; ${d.name}</div><div class="det-meta"><span class="dp-pill">${d.dp} DP</span><span class="disp-pill ${dispCls(d.disp)}">${disp.label}</span></div><div class="det-rule">${d.rule}</div><div class="det-desc">${d.desc}</div></div>`;}
   h+=`<hr class="divider">`;
   for(const sec of secs){const su=R.units.filter(u=>u.section===sec.k);if(!su.length)continue;h+=`<div class="sl">${sec.l}</div>`;
