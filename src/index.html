@@ -3375,8 +3375,8 @@ function liveTogglesHtml(){
 
 // Shared math for the Battle Plan and Duel views: builds ctx/opts from the
 // shared toggles + the target's tracked state, and runs the combat engine.
-function liveComputeAttack(atk,atkSide,def){
-  const t=liveToggles();
+function liveComputeAttack(atk,atkSide,def,tOverride){
+  const t=tOverride||liveToggles();
   const defMod=Math.max(1,def._live.modelsLeft);
   const ctx={onCharge:t.charge,oathTarget:t.oath,waaagh:t.charge,bigMob:defMod>=20,entrenched:false,
     belowStarting:def._live.modelsLeft<def._live.startModels,
@@ -3530,6 +3530,31 @@ function buildBattlePlan(){
     <h3>Scenario toggles <span style="color:var(--text3);font-weight:400;text-transform:none">— apply to every number below and to the Duel view</span></h3>
     ${liveTogglesHtml()}
   </div>`;
+
+  // Oath of Moment advisor: which single enemy unit, if chosen as the Oath
+  // target, unlocks the most extra expected damage across my whole army?
+  // Computed with explicit oath on/off overrides so the shared toggle state
+  // doesn't skew the comparison. Astartes armies only.
+  const isAstartes=LIVE.myUnits.some(u=>(u.profile.kw||[]).includes('IMPERIUM'));
+  if(isAstartes&&myRows.length&&alive('oppUnits').length){
+    const t=liveToggles();
+    const tOn={...t,oath:true},tOff={...t,oath:false};
+    const gains=alive('oppUnits').map(({u:def,i:di})=>{
+      let gain=0;
+      for(const{u:atk}of armed('myUnits'))
+        gain+=liveComputeAttack(atk,'myUnits',def,tOn).expDmg-liveComputeAttack(atk,'myUnits',def,tOff).expDmg;
+      return{di,def,gain};
+    }).sort((a,b)=>b.gain-a.gain);
+    const best=gains[0];
+    if(best&&best.gain>0.05){
+      h+=`<div class="info" style="background:var(--overlay-1);color:var(--text2);margin-bottom:10px">
+        &#127919; <strong>Oath of Moment suggestion:</strong> declare <strong>U${liveUnitNumber('oppUnits',best.di)} ${best.def.name}</strong>
+        — unlocks <strong style="color:var(--c-green)">+${best.gain.toFixed(1)}</strong> expected damage across your army this round
+        ${gains[1]&&gains[1].gain>0.05?`<span style="color:var(--text3)">(next best: ${gains[1].def.name}, +${gains[1].gain.toFixed(1)})</span>`:''}
+        <br><span style="font-size:10px;color:var(--text3)">Re-roll hit &amp; wound 1s for everything attacking the target — declared in your Command phase. Tick the "Oath" toggle when running duels against it.</span>
+      </div>`;
+    }
+  }
 
   h+=`<div class="section-header">&#127919; My units — best targets</div>`;
   if(!myRows.length)h+=`<div class="empty" style="padding:1rem">No armed units left.</div>`;
