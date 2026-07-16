@@ -172,6 +172,8 @@ th{background:var(--bg3)}
 .army-radar-box{position:relative;width:150px;height:150px;margin:0 auto}
 [data-rule]{cursor:help}
 .rule-popover{position:absolute;max-width:240px;background:var(--popover-bg);border:1px solid var(--red);border-radius:6px;padding:8px 10px;font-size:11px;line-height:1.4;color:var(--text2);box-shadow:0 6px 20px rgba(0,0,0,.35);z-index:10000;pointer-events:none}
+.lib-action-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:2px 4px;font-family:var(--font);text-align:left;white-space:nowrap}
+.lib-action-btn:hover{color:var(--text)}
 
 /* ── Mobile (phones, e.g. Pixel 7 @ 412px CSS width) ─────────────────────── */
 @media (max-width:640px){
@@ -185,6 +187,7 @@ th{background:var(--bg3)}
   .btn{padding:10px 16px}
   /* Comfortable touch targets for in-game one-handed use */
   .btn.stepper-btn{min-width:44px;min-height:42px;padding:8px 12px;font-size:16px}
+  .lib-action-btn{padding:8px 6px;font-size:13px}
 }
 </style>
 </head>
@@ -2071,6 +2074,8 @@ function saveRosterToLibrary(){
 }
 
 function deleteFromLibrary(id){
+  const entry=_libCache.find(e=>e.id===id);
+  if(entry&&!confirm(`Delete “${entry.name}”? This also removes it from synced devices.`))return;
   _libCache = _libCache.filter(e=>e.id!==id);
   // Tombstone so the deletion propagates through sync instead of the entry
   // resurrecting from another device's copy
@@ -2206,8 +2211,11 @@ function buildLibraryTab(){
       h+=`</div></div>
           <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
             <button onclick="loadRosterFromLibrary(${e.id})" title="Load this roster" style="padding:4px 10px;font-size:11px;border:1px solid rgba(192,57,43,.5);border-radius:6px;background:rgba(192,57,43,.1);cursor:pointer;color:var(--c-red-lt);font-family:var(--font)">&#9654; Load</button>
-            <button onclick="libToggleNoteEditor(${e.id})" title="Add/edit a note" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:2px 4px;font-family:var(--font)">&#9998; Note</button>
-            <button onclick="deleteFromLibrary(${e.id})" title="Remove" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:2px 4px;font-family:var(--font)">&#10005; Remove</button>
+            <button onclick="libRename(${e.id})" title="Rename this list" class="lib-action-btn">&#9998; Rename</button>
+            <button onclick="libToggleNoteEditor(${e.id})" title="Add/edit a note" class="lib-action-btn">&#128221; Note</button>
+            <button onclick="libDuplicate(${e.id})" title="Duplicate this list" class="lib-action-btn">&#10697; Duplicate</button>
+            <button onclick="libExportOne(${e.id})" title="Export this list as a JSON file (share with a friend — they use Import JSON)" class="lib-action-btn">&#8682; Export</button>
+            <button onclick="deleteFromLibrary(${e.id})" title="Delete (asks to confirm)" class="lib-action-btn" style="color:var(--c-red-lt)">&#10005; Delete</button>
           </div>
         </div>
         ${e.note?`<div style="margin-top:8px;padding:6px 10px;border-left:2px solid var(--c-amber);background:var(--overlay-1);border-radius:4px;font-size:11px;color:var(--text2)">&#128221; ${noteEsc}</div>`:''}
@@ -2261,6 +2269,48 @@ function setLibSort(key){
 function libToggleNoteEditor(id){
   const ed=document.getElementById('lib-note-editor-'+id);
   if(ed)ed.style.display=ed.style.display==='none'?'block':'none';
+}
+function libRename(id){
+  const entry=_libCache.find(e=>e.id===id);
+  if(!entry)return;
+  const name=prompt('New name for this list:',entry.name);
+  if(name===null)return; // cancelled
+  const trimmed=name.trim();
+  if(!trimmed){showToast('Name cannot be empty','red');return;}
+  entry.name=trimmed;
+  if(entry.roster)entry.roster.name=trimmed; // keep the reloadable snapshot in sync
+  entry.updatedAt=Date.now();
+  saveLibrary([..._libCache]).catch(e=>console.error('[Library] rename save failed:',e));
+  buildLibraryTab();
+  showToast(`Renamed to “${trimmed}”`,'green');
+}
+function libDuplicate(id){
+  const entry=_libCache.find(e=>e.id===id);
+  if(!entry)return;
+  if(_libCache.length>=LIB_MAX){showToast(`Library is full (${LIB_MAX} lists) — remove one first`,'red');return;}
+  const copy=JSON.parse(JSON.stringify(entry));
+  copy.id=Date.now();
+  copy.name=entry.name+' (copy)';
+  if(copy.roster)copy.roster.name=copy.name;
+  copy.updatedAt=Date.now();
+  copy.savedAt=new Date().toLocaleString();
+  _libCache.push(copy);
+  saveLibrary([..._libCache]).catch(e=>console.error('[Library] duplicate save failed:',e));
+  buildLibraryTab();
+  showToast(`Duplicated as “${copy.name}”`,'green');
+}
+// Single-list export, wrapped in an array so the existing Import JSON button
+// accepts the file as-is — this is the "share one list with a friend" path.
+function libExportOne(id){
+  const entry=_libCache.find(e=>e.id===id);
+  if(!entry)return;
+  const blob=new Blob([JSON.stringify([entry],null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=entry.name.replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'_').toLowerCase()+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 function libSaveNote(id){
   const entry=_libCache.find(e=>e.id===id);
@@ -3483,7 +3533,8 @@ function importLibrary(){
     if(!file) return;
     try{
       const text = await file.text();
-      const data = JSON.parse(text);
+      let data = JSON.parse(text);
+      if(!Array.isArray(data)&&data&&data.name&&data.faction)data=[data]; // single shared list
       if(!Array.isArray(data)) throw new Error('Invalid format');
       // Merge: keep existing entries not in the file, add new ones
       const merged = [..._libCache];
