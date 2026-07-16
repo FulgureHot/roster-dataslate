@@ -17,10 +17,12 @@ La Library peut se synchroniser entre appareils (desktop Electron, Chrome, Firef
 
 ### ⚔ Battle — en partie
 - **Setup** — ta liste + la liste adverse (collée depuis WhatsApp/mail) en 3 étapes
-- **Plan** — toutes les confrontations calculées d'avance, dans les deux sens : meilleures cibles de chaque unité, menaces adverses, pression subie par tes unités ; un tap ouvre le duel détaillé
-- **Tracker** — PV/figurines restants (steppers + pavé de saisie rapide + micro en ligne), CP/VP/round, annulation, barres de vie, badges Battle-shock, portées de menace
+- **Plan** — toutes les confrontations calculées d'avance, dans les deux sens : meilleures cibles de chaque unité, menaces adverses, pression subie par tes unités, suggestion de cible Oath of Moment ; un tap ouvre le duel détaillé
+- **Tracker** — PV/figurines restants (steppers + pavé de saisie rapide + micro en ligne), CP/round, score par round (primaire/secondaire), journal des pertes, annulation, barres de vie, badges Battle-shock, portées de menace
 - **Duel** — distribution des dégâts ("chances de faire au moins X"), évaluation d'échange en points, probabilité de kill par round
-- **Tools** — probabilité de charge, grenade, checklist de tour
+- **Tools** — stratagèmes avec décompte de CP (liste par détachement), probabilité de charge, grenade, checklist de tour
+
+À l'analyse d'une liste, des avertissements signalent les incohérences (total de points ≠ somme des unités, warlord manquant, armes inconnues du simulateur). La Library superpose les listes d'un même palier de points sur un radar et trace l'évolution du score d'une liste au fil de ses versions (sparkline).
 
 Le parseur reconnaît le format texte du Warhammer App/BattleScribe et fait correspondre les noms d'unités/armes aux bases de données internes (`UDB`, `WDB`, `DETACHMENT_DB`, `LEADER_DB`) pour déduire les profils de combat et simuler les jets de dés.
 
