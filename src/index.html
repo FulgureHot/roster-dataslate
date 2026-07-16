@@ -746,6 +746,7 @@ function applyTheme(mode){
   renderStatsCharts();
   renderSimChart();
   renderLiveSimChart();
+  if(document.getElementById('s-library')?.classList.contains('active'))buildLibraryTab();
 }
 function toggleTheme(){
   const next={light:'dark',dark:'auto',auto:'light'}[themeMode()]||'light';
@@ -2073,6 +2074,10 @@ function saveRosterToLibrary(){
     };
     snap.updatedAt = Date.now(); // numeric, comparable — savedAt is a locale display string
     const idx = _libCache.findIndex(e=>e.name===snap.name&&e.faction===snap.faction);
+    // Score history: one point per (re-)analysis, so list tuning over time is
+    // visible as a sparkline on the card. Capped — old points age out.
+    const histPoint={at:snap.updatedAt,score:snap.scores.global,pts:snap.points};
+    snap.history=[...(idx>=0?(_libCache[idx].history||[]):[]),histPoint].slice(-20);
     if(idx>=0){snap.id=_libCache[idx].id;snap.note=_libCache[idx].note;_libCache[idx]=snap;}else _libCache.push(snap);
     // Cap the library (sync payload and UI both stay manageable) — evict oldest first
     if(_libCache.length>LIB_MAX){
@@ -2202,6 +2207,7 @@ function buildLibraryTab(){
           <div style="text-align:center;min-width:52px">
             <div class="lib-score">${sc.global}</div>
             <div style="font-size:9px;color:var(--text3)">/100</div>
+            ${libSparkline(e)}
           </div>
           <div style="flex:1;min-width:0">
             <div class="lib-card-name">${e.name}</div>
@@ -2274,10 +2280,56 @@ function buildLibraryTab(){
         </tr>`;
       }
       h+=`</table></div>`;
+
+      // Overlaid radar — same-bracket lists on one chart (comparing across
+      // point sizes isn't meaningful, same rule as the table above)
+      h+=`<div class="card" style="margin-top:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px">&#128200; Radar comparison — ${bracket}pts bracket</div>
+        <div style="position:relative;height:250px;max-width:430px;margin:0 auto"><canvas id="lib-radar-${bracket}"></canvas></div>
+        ${entries.length>5?`<div style="font-size:10px;color:var(--text3);margin-top:4px">Showing the top 5 by current sort.</div>`:''}
+      </div>`;
     }
   }
 
   document.getElementById('lib-c').innerHTML=h;
+  renderLibRadars(groups);
+}
+
+// Tiny inline-SVG score trend for a card — one point per (re-)analysis of the
+// same list. SVG (not Chart.js) on purpose: immune to the hidden-tab 0x0 trap.
+function libSparkline(e){
+  const hist=e.history||[];
+  if(hist.length<2)return '';
+  const w=52,ht=16;
+  const scores=hist.map(p=>p.score);
+  const min=Math.min(...scores),max=Math.max(...scores),span=Math.max(1,max-min);
+  const pts=hist.map((p,i)=>`${(i/(hist.length-1)*w).toFixed(1)},${(ht-2-(p.score-min)/span*(ht-4)).toFixed(1)}`).join(' ');
+  const up=scores[scores.length-1]>=scores[0];
+  return `<svg width="${w}" height="${ht}" viewBox="0 0 ${w} ${ht}" style="display:block;margin:3px auto 0" aria-label="score trend"><title>Score over the last ${hist.length} analyses: ${scores.join(' → ')}</title><polyline points="${pts}" fill="none" stroke="${up?'var(--c-green)':'var(--c-red-lt)'}" stroke-width="1.5"/></svg>`;
+}
+
+let _libRadarCharts=[];
+function renderLibRadars(groups){
+  for(const c of _libRadarCharts)try{c.destroy();}catch(e){}
+  _libRadarCharts=[];
+  // Never create a chart in a hidden tab — it measures 0x0 and stays broken
+  // (see the chartRadar fix). showTab('library') rebuilds this tab anyway.
+  if(!document.getElementById('s-library').classList.contains('active'))return;
+  const cc=chartColors();
+  const palette=['#c0392b','#2563eb','#16a34a','#d97706','#7c3aed'];
+  for(const bracket of Object.keys(groups)){
+    const cv=document.getElementById('lib-radar-'+bracket);
+    if(!cv)continue;
+    const entries=groups[bracket].slice(0,5);
+    _libRadarCharts.push(new Chart(cv,{type:'radar',
+      data:{labels:['Firepower','Durability','Mobility','Density','Consistency','Special'],
+        datasets:entries.map((e,i)=>({label:e.name,
+          data:[e.scores.firepower,e.scores.durability,e.scores.mobility,e.scores.mass,e.scores.consistency,e.scores.special],
+          borderColor:palette[i%palette.length],backgroundColor:palette[i%palette.length]+'22',pointRadius:2,borderWidth:1.5}))},
+      options:{responsive:true,maintainAspectRatio:false,
+        scales:{r:{min:0,max:10,ticks:{display:false},grid:{color:cc.gridStrong},angleLines:{color:cc.grid},pointLabels:{color:cc.tickB,font:{size:10}}}},
+        plugins:{legend:{labels:{color:cc.legend,font:{size:10},boxWidth:12}}}}}));
+  }
 }
 
 function setLibSort(key){
