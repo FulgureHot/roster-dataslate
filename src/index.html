@@ -3059,10 +3059,107 @@ function buildBattleDuel(){
 }
 
 // ── Battle / Tools ────────────────────────────────────────────────────────────
+// ── Stratagems ────────────────────────────────────────────────────────────────
+// Reference list + CP bookkeeping: tapping "Use" deducts CP and remembers the
+// count; once-per-battle entries grey out. Same philosophy as RULES_GLOSSARY —
+// a hand-curated list matching what this app's engine models, NOT an official
+// rules source: check your actual cards, extend entries as needed. Strats that
+// map to an engine feature say where (duel toggle / Tools calculator).
+const STRATS_CORE=[
+  {id:'cmd-reroll',n:'Command Re-roll',cp:1,phase:'Any',d:'Re-roll one hit, wound, damage, save, advance or charge roll.'},
+  {id:'counter-offensive',n:'Counter-Offensive',cp:2,phase:'Fight',d:'Right after an enemy unit fights: one of your units fights next.'},
+  {id:'epic-challenge',n:'Epic Challenge',cp:1,phase:'Fight',d:'Your CHARACTER in engagement gains PRECISION for the phase.'},
+  {id:'insane-bravery',n:'Insane Bravery',cp:1,phase:'Command',once:true,d:'Auto-pass one Battle-shock test.'},
+  {id:'fire-overwatch',n:'Fire Overwatch',cp:1,phase:"Opp. Move/Charge",d:'Shoot an enemy that just moved within 24" — unmodified 6s only. Duel toggle: "Fire Overwatch".'},
+  {id:'smokescreen',n:'Smokescreen',cp:1,phase:'Opp. Shooting',d:'SMOKE unit targeted: attackers -1 to hit. Duel toggle: "Smokescreen".'},
+  {id:'grenade',n:'Grenade',cp:1,phase:'Shooting',d:'GRENADES unit, enemy within 8": 6D6, each 4+ = 1 mortal. Calculator below.'},
+  {id:'tank-shock',n:'Tank Shock',cp:1,phase:'Charge',d:'Charging VEHICLE: roll its Toughness in D6, each 5+ = 1 mortal (max 6).'},
+  {id:'rapid-ingress',n:'Rapid Ingress',cp:1,phase:'End of opp. Move',d:'One Reserves unit arrives early.'},
+  {id:'heroic-intervention',n:'Heroic Intervention',cp:2,phase:'Opp. Charge',d:'Enemy ends a charge near you: one of your units counter-charges.'},
+  {id:'armour-contempt',n:'Armour of Contempt',cp:1,phase:'Being attacked',d:'Adeptus Astartes unit: incoming AP worsened by 1. Duel toggle: "Armor of Contempt".'}
+];
+const STRATS_BY_DET={
+  'the lost brethren':[
+    {id:'lb-refuse',n:'Refuse to Fall',cp:1,phase:'Any',d:'DEATH COMPANY unit taking damage: FNP 5+ until end of phase. Duel toggle: "FNP 5+".'},
+    {id:'lb-fury',n:'A Final Fury',cp:2,phase:'Fight',d:'DEATH COMPANY unit destroyed before fighting: it fights before removal.'}],
+  'liberator assault group':[
+    {id:'lag-rampage',n:'Red Rampage',cp:1,phase:'Charge',d:'Charged unit: +1 to Wound rolls in melee this turn.'},
+    {id:'lag-descent',n:'Descent of Angels',cp:1,phase:'Movement',d:'JUMP PACK unit arriving from Reserves: re-roll the charge this turn.'}],
+  'angelic host':[
+    {id:'ah-wings',n:'On Wings of Fire',cp:1,phase:'End of any phase',d:'JUMP PACK unit makes its free Upon Wings of Fire move again (once each).'}],
+  'rage-cursed onslaught':[
+    {id:'rc-frenzy',n:'Unbridled Frenzy',cp:1,phase:'Fight',d:'One unit re-rolls all failed melee hit rolls this phase.'}],
+  'gladius task force':[
+    {id:'gtf-doctrine',n:'Adaptive Strategy',cp:1,phase:'Command',d:'One unit gains the benefit of a doctrine already used this battle.'}],
+  'war horde':[
+    {id:'wh-ere-we-go',n:"'Ere We Go",cp:1,phase:'Charge',d:'Re-roll a charge roll for an ORKS unit.'},
+    {id:'wh-careen',n:'Careen!',cp:1,phase:'Any',d:'Destroyed VEHICLE: Deadly Demise hits on 4+ instead of 6.'}],
+  'bully boyz':[
+    {id:'bb-tuff',n:"Dead 'Ard",cp:1,phase:'Being attacked',d:'NOBZ/MEGANOBZ unit: FNP 5+ vs mortal wounds until end of phase.'}],
+  'green tide':[
+    {id:'gt-mob-up',n:'Mob Up',cp:1,phase:'Movement',d:'Two BOYZ units within 6" merge remaining models into one unit.'}]
+};
+function stratsForDetachment(det){
+  const list=STRATS_CORE.map(s=>({...s}));
+  if(det){
+    const key=Object.keys(DETACHMENT_DB).find(k=>DETACHMENT_DB[k].name===det.name);
+    if(key&&STRATS_BY_DET[key])list.push(...STRATS_BY_DET[key].map(s=>({...s,det:true})));
+  }
+  return list;
+}
+function useStrat(id,cp){
+  if(!LIVE)return;
+  LIVE.stratUse=LIVE.stratUse||{};
+  if((LIVE.myCP??0)<cp){showToast(`Not enough CP (${LIVE.myCP??0} left, costs ${cp})`,'red');return;}
+  LIVE.myCP-=cp;
+  LIVE.stratUse[id]=(LIVE.stratUse[id]||0)+1;
+  saveLive();buildBattleTools();
+  showToast(`Stratagem used — ${LIVE.myCP} CP left`,'green');
+}
+function refundStrat(id,cp){
+  if(!LIVE||!LIVE.stratUse||!LIVE.stratUse[id])return;
+  LIVE.stratUse[id]--;if(!LIVE.stratUse[id])delete LIVE.stratUse[id];
+  LIVE.myCP=(LIVE.myCP??0)+cp;
+  saveLive();buildBattleTools();
+  showToast(`Refunded — ${LIVE.myCP} CP`,'green');
+}
+function stratagemsCardHtml(){
+  const det=LIVE.myDetachment;
+  const use=LIVE.stratUse||{};
+  const rows=stratsForDetachment(det).map(s=>{
+    const used=use[s.id]||0;
+    const spent=s.once&&used>0;
+    const canPay=(LIVE.myCP??0)>=s.cp;
+    return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:var(--text)">${s.det?'&#9876; ':''}${s.n}
+          <span class="dp-pill" style="margin-left:4px">${s.cp} CP</span>
+          ${s.once?`<span style="font-size:9px;color:var(--c-amber)">once per battle</span>`:''}
+          ${used?`<span style="font-size:10px;color:var(--c-green)">&#10003; used ×${used}</span>`:''}
+        </div>
+        <div style="font-size:10px;color:var(--text3)">${s.phase} — ${s.d}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0">
+        <button class="btn" style="font-size:11px;padding:4px 10px${spent||!canPay?';opacity:.45':''}" ${spent?'disabled':''} onclick="useStrat('${s.id}',${s.cp})">${spent?'Used':'Use'}</button>
+        ${used?`<button class="lib-action-btn" style="font-size:10px" onclick="refundStrat('${s.id}',${s.cp})" title="Mis-tap? Refund the CP">&#8634; undo</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+  return `<div class="card">
+    <h3>&#127183; Stratagems <span style="font-size:12px;color:var(--text3);font-weight:400">· Your CP: <strong style="color:var(--text)">${LIVE.myCP??0}</strong></span>
+      <span style="float:right;display:flex;gap:4px">
+        <button class="btn stepper-btn" style="font-size:12px;padding:2px 10px" onclick="liveAdjustCP('myCP',-1);buildBattleTools()">&minus;</button>
+        <button class="btn stepper-btn" style="font-size:12px;padding:2px 10px" onclick="liveAdjustCP('myCP',1);buildBattleTools()">+</button>
+      </span></h3>
+    <p style="font-size:10px;color:var(--text3);margin-bottom:6px">${det?`Core + <strong>${det.name}</strong> stratagems`:'Core stratagems (no detachment detected)'} — reference list, check your cards. "Use" deducts the CP.</p>
+    ${rows}
+  </div>`;
+}
+
 function buildBattleTools(){
   const el=document.getElementById('btools-c');
   if(!LIVE){el.innerHTML=`<div class="empty">No active battle — <button class="btn primary" onclick="showTab('live')">set one up</button></div>`;return;}
-  el.innerHTML=`<div class="card">
+  el.innerHTML=stratagemsCardHtml()+`<div class="card">
       <h3>Charge &amp; utility</h3>
       <div class="f2">
         <div class="fg"><label>Charge distance (inches)</label>
